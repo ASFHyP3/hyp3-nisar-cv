@@ -1,0 +1,19 @@
+name: nisar-cv
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python>=3.12
+  - pip
+  # For running
+  - asf_search
+  - gdal
+  - h5py
+  - numpy
+  # For packaging, and testing
+  - pytest
+  - pytest-cov
+  # For quick-look plots during development
+  - matplotlib
+  - pip:
+    - -e .
