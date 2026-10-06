@@ -10,7 +10,7 @@ mamba activate nisar-cv
 
 ## Usage
 
-The HyP3-NISAR-CV plugin provies a workflow (accessible directly in Python or via a CLI) for creating coefficient of variation maps and crop area identification from a list of NISAR granules.
+The HyP3-NISAR-CV plugin provides a workflow (accessible directly in Python or via a CLI) for creating coefficient of variation maps and crop area identification from a list of NISAR granules.
 
 Pass a list of granules from one track/frame, plus optional polarization, subset, and crop area
 parameters:

@@ -1,0 +1,6 @@
+#temp and output files
+data/
+output/
+
+#pycache
+/src/nisar_cv/__pycache__/
