@@ -1,3 +1,12 @@
+Metadata-Version: 2.4
+Name: nisar_cv
+Version: 0.1.0
+Summary: Coefficient of variation and crop area from NISAR GCOV time series.
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
 # hyp3-nisar-cv
 Generate coefficient of variation from NISAR GCOVs using HyP3
 
@@ -16,7 +25,7 @@ Pass a list of granules from one track/frame, plus optional polarization, subset
 parameters:
 
 ```
-python src/nisar_cv \
+python -m nisar_cv \
     NISAR_L2_PR_GCOV_023_148_A_024_2005_DHDH_M_20260624T105804_20260624T105843_P05023_N_F_J_001 \
     NISAR_L2_PR_GCOV_024_148_A_024_2005_DHDH_M_20260706T105804_20260706T105842_P05023_N_F_J_001 \
     NISAR_L2_PR_GCOV_025_148_A_024_2005_DHDH_M_20260718T105803_20260718T105841_P05023_N_F_J_001 \
@@ -24,10 +33,7 @@ python src/nisar_cv \
     --subset 'POLYGON((-91.2399 45.1589,-90.7532 45.1589,-90.7532 45.4609,-91.2399 45.4609,-91.2399 45.1589))'
 ```
 
-Additional parameters: `--pol` (default `HHHH`), and crop area parameters: `--no-crop-area` (default `False`),
-`--cv-threshold` (default `0.4`), `--water-threshold-db` (default `16.5`, in dB), `--water-fraction` (default `0.75`)
-for fraction of scenes below the threshold to count as water.
-
+Crop area parameters are `--no-crop-area` for the CV outputs only, FINISH THIS
 
 ### Earthdata Login Credentials
 

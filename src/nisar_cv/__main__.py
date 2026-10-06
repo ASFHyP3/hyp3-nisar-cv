@@ -1,8 +1,7 @@
 """Coefficient of variation, and optionally crop area, from a stack of NISAR GCOV granules."""
 
 import argparse
-
-from nisar_cv import gcov, process
+from nisar_cv import process
 
 
 def main():

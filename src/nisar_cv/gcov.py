@@ -1,5 +1,4 @@
 import netrc
-from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -49,24 +48,14 @@ def earthdata_session():
     username, _, password = credentials
     return asf.ASFSession().auth_with_creds(username, password)
 
-def download_granules(granules):
-    to_download = [g for g in granules if not (DATA_DIR / f'{g}.h5').exists()]
-    products = {}
-    if to_download:
-        products = {r.properties['fileID']: r for r in asf.granule_search(to_download)}
-    missing = [g for g in to_download if g not in products]
-    if missing:
-        raise ValueError(f'Not found on ASF: {missing}')
-
-def download_granule(granule, product, session):
+def download_granule(product, session):
+    granule = product.properties["sceneName"]
     print(f'starting download: {granule}')
-    path = DATA_DIR / f'{granule}.h5'
-    partial_dir = DATA_DIR / '.partial'
-    partial = partial_dir / path.name
-    product.download(path=str(partial_dir), session=session)
-    partial.rename(path)
+    path = DATA_DIR
+    product.download(path=str(path), session=session)
+
     print(f'finished download: {granule}')
-    return path
+    return path/f'{granule}.h5'
 
 def remove_granule(granule):
     path = DATA_DIR / f'{granule}.h5'
@@ -93,11 +82,7 @@ def project_wkt(wkt, epsg):
 
 
 def subset_window(wkt, x, y, epsg):
-    """Row and column slices of the pixels that overlap the bounding box of a WGS84 WKT geometry.
-
-    The geometry is reprojected to the grid's EPSG and its envelope is used, so the window is
-    the rectangle in map coordinates that contains the requested geometry.
-    """
+    """Row and column slices of the pixels that overlap the bounding box of a WGS84 WKT geometry."""
     minx, maxx, miny, maxy = project_wkt(wkt, epsg).GetEnvelope()
 
     half_dx = abs(x[1] - x[0]) / 2
@@ -139,14 +124,13 @@ def write_geotiff(filename, array, grid, nodata):
     """Write a single-band Cloud Optimized GeoTIFF to OUTPUT_DIR."""
     OUTPUT_DIR.mkdir(exist_ok=True)
     path = OUTPUT_DIR / filename
+    path = str(path)
 
     gdal_type = gdal_array.NumericTypeCodeToGDALTypeCode(array.dtype)
-    mem = gdal.GetDriverByName('MEM').Create('', grid.shape[1], grid.shape[0], 1, gdal_type)
-    mem.SetGeoTransform(grid.geotransform)
-    mem.SetProjection(grid.srs.ExportToWkt())
-    band = mem.GetRasterBand(1)
+    ds = gdal.GetDriverByName('COG').Create(str(path), grid.shape[1], grid.shape[0], 1, gdal_type)
+    ds.SetGeoTransform(grid.geotransform)
+    ds.SetProjection(grid.srs.ExportToWkt())
+    band = ds.GetRasterBand(1)
     band.SetNoDataValue(nodata)
     band.WriteArray(array)
-
-    gdal.GetDriverByName('COG').CreateCopy(str(path), mem, 'RESAMPLING = NEAREST')
     return path

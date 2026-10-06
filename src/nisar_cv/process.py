@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import numpy as np
+import asf_search as asf
 
 from nisar_cv import gcov
 
@@ -32,12 +33,14 @@ class WelfordCV:
         self.n_water += x <= self.water_thresh_lin  # NaN compares False, as in the notebook
         valid = np.isfinite(x) & (x > 0)
         self.n += valid
-        self.mean += np.divide(layer, self.n, out=np.zeros_like(layer), where=valid)
-        self.m2 += layer*layer
+        d = np.where(valid, x - self.mean, 0.0)
+        self.mean += np.divide(d, self.n, out=np.zeros_like(x), where=valid)
+        self.m2 += d * np.where(valid, x - self.mean, 0.0)
 
-    def cv(self, ddof=0, min_n=MIN_ACQUISITIONS, require_all=False):
+    def cv(self, min_n=MIN_ACQUISITIONS):
         out = np.full(self.n.shape, np.nan, np.float32)
-        out = np.sqrt(self.m2/(self.n - ddof)) / self.mean
+        ok = self.n >= min_n
+        out[ok] = np.sqrt(self.m2[ok]/(self.n[ok])) / self.mean[ok]
         return out
 
     def water_mask(self, frac=WATER_FRACTION):
@@ -100,13 +103,17 @@ def process_cv(granules, pol='HHHH', subset_wkt=None, water_thresh_db=WATER_THRE
     """
 
     names = list(granules)
-    session = gcov.earthdata_session() if any(p is not None for p in granules.values()) else None
+    session = gcov.earthdata_session()
+    print(granules)
+    products = asf.granule_search(granules)
+    # print(products)
 
     stats = None
     grid = None
-    for i, (granule, product) in enumerate(granules.items(), start=1):
-        
-        h5_path = gcov.download_granule(granule,product,session)
+    for i, product in enumerate(products, start=1):
+        # granule = granules[i]
+        granule = product.properties["sceneName"]
+        h5_path = gcov.download_granule(product,session)
         layer, layer_grid = gcov.read_gcov_layer(h5_path, pol, subset_wkt)
 
         if stats is None:
@@ -119,9 +126,6 @@ def process_cv(granules, pol='HHHH', subset_wkt=None, water_thresh_db=WATER_THRE
         gcov.remove_granule(granule)
 
     cv = stats.cv()
-    inside = gcov.subset_mask(subset_wkt, grid) if subset_wkt else None
-    if inside is not None:
-        cv[~inside] = np.nan
 
     name = gcov.product_name(names, pol)
     res = AGGREGATE_RESOLUTION
@@ -131,7 +135,6 @@ def process_cv(granules, pol='HHHH', subset_wkt=None, water_thresh_db=WATER_THRE
         gcov.write_geotiff(f'{name}_CV_{res}m.tif', cv_agg, agg_grid, nodata=np.nan),
     ]
     return CVResult(name, cv, stats, grid, outputs)
-    # return outputs
 
 def classify_crop(cv, water_mask, cv_threshold=CV_THRESHOLD):
     """Crop area classes: CV >= threshold is crop, water overrides, no valid CV is nodata."""
@@ -142,27 +145,16 @@ def classify_crop(cv, water_mask, cv_threshold=CV_THRESHOLD):
     return crop
 
 def process_crop_area(result, cv_threshold=CV_THRESHOLD, water_fraction=WATER_FRACTION):
-    """Write the water mask, and the crop area at native resolution and AGGREGATE_RESOLUTION.
+    """Write the water mask, and the crop area at AGGREGATE_RESOLUTION."""
 
-    Args:
-        result: The CVResult from process_cv.
-        cv_threshold: Crop where CV >= this.
-        water_fraction: Water where the backscatter was at or below the water threshold in more
-            than this fraction of acquisitions.
-
-    Returns:
-        Paths of the water mask and crop area GeoTIFFs.
-    """
     water = result.stats.water_mask(water_fraction)
     crop = classify_crop(result.cv, water, cv_threshold)
     water[result.stats.n == 0] = WATER_MASK_NODATA
-    if result.inside is not None:
-        water[~result.inside] = WATER_MASK_NODATA
-        crop[~result.inside] = NODATA
 
     name, grid, res = result.name, result.grid, AGGREGATE_RESOLUTION
     crop_agg, agg_grid = aggregate(crop, grid, res, nodata=NODATA)
     return [
         gcov.write_geotiff(f'{name}_WATER.tif', water, grid, nodata=WATER_MASK_NODATA),
+        gcov.write_geotiff(f'{name}_CROP.tif', crop, grid, nodata=NODATA),
         gcov.write_geotiff(f'{name}_CROP_{res}m.tif', crop_agg, agg_grid, nodata=NODATA),
     ]
