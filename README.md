@@ -16,7 +16,7 @@ Pass a list of granules from one track/frame, plus optional polarization, subset
 parameters:
 
 ```
-python -m nisar_cv \
+python src/nisar_cv \
     NISAR_L2_PR_GCOV_023_148_A_024_2005_DHDH_M_20260624T105804_20260624T105843_P05023_N_F_J_001 \
     NISAR_L2_PR_GCOV_024_148_A_024_2005_DHDH_M_20260706T105804_20260706T105842_P05023_N_F_J_001 \
     NISAR_L2_PR_GCOV_025_148_A_024_2005_DHDH_M_20260718T105803_20260718T105841_P05023_N_F_J_001 \

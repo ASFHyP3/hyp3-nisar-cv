@@ -10,7 +10,7 @@ def main():
     parser.add_argument('granules', type=str.split, nargs='+')
     parser.add_argument('--pol', default='HHHH')
     parser.add_argument('--subset', default=None)
-    parser.add_argument('--crop-area', default=True)
+    parser.add_argument('--crop-area', default=False)
     parser.add_argument('--cv-threshold', default=process.CV_THRESHOLD)
     parser.add_argument('--water-threshold-db', default=process.WATER_THRESH_DB)
     parser.add_argument('--water-fraction',default=process.WATER_FRACTION)

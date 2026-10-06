@@ -45,27 +45,14 @@ class WelfordCV:
 
 @dataclass
 class CVResult:
-    """The CV pass: its statistics and grid are what process_crop_area builds on."""
-
     name: str  # output file name prefix
     cv: np.ndarray
     stats: WelfordCV
     grid: gcov.Grid
-    # inside: np.ndarray | None  # pixels inside the subset geometry; None without a subset
-    # tags: dict
     outputs: list
 
 def aggregate(array, grid, resolution, nodata):
-    """Aggregate to ``resolution`` meters on a grid aligned to multiples of ``resolution``.
-
-    Each output pixel is the block of source pixels it contains (5 x 5 for 20 m -> 100 m). The
-    output extent is the source extent snapped outward; source pixels that fall outside the source
-    extent count as nodata. Float arrays get the mean of the valid pixels. Integer (class) arrays
-    get the majority class of the non-nodata pixels; ties go to the lowest class value.
-
-    Returns:
-        The aggregated array and its grid.
-    """
+    """Aggregate to resolution on a grid aligned to multiples of resolution. """
     
     dx, dy = grid.x[1] - grid.x[0], grid.y[1] - grid.y[0]
     factor = resolution / dx
@@ -126,6 +113,7 @@ def process_cv(granules, pol='HHHH', subset_wkt=None, water_thresh_db=WATER_THRE
             stats = WelfordCV(layer.shape, water_thresh_db)
             grid = layer_grid
 
+        print('performing Welford with layer')
         stats.update(layer)
         del layer
         gcov.remove_granule(granule)
