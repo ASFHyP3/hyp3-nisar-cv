@@ -10,6 +10,7 @@ dependencies:
   - gdal=3.13
   - h5py=3.16
   - numpy=2.5
+  - hyp3lib=4.0
   # For packaging, and testing
   - pytest=9.1
   - pytest-cov=7.1

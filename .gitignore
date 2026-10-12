@@ -4,3 +4,6 @@ output/
 
 #pycache
 /src/nisar_cv/__pycache__/
+
+#pycharm
+.idea/
