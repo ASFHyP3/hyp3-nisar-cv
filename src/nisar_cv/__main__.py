@@ -3,7 +3,7 @@
 import argparse
 from nisar_cv import process
 from pathlib import Path
-from hyp3lib.aws import upload_file_to_s3
+from aws import upload_file_to_s3
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
