@@ -4,16 +4,16 @@ channels:
   - nodefaults
 dependencies:
   - python>=3.12
-  - pip
+  - pip=26.2
   # For running
-  - asf_search
-  - gdal
-  - h5py
-  - numpy
+  - asf_search=14.0
+  - gdal=3.13
+  - h5py=3.16
+  - numpy=2.5
   # For packaging, and testing
-  - pytest
-  - pytest-cov
+  - pytest=9.1
+  - pytest-cov=7.1
   # For quick-look plots during development
-  - matplotlib
+  - matplotlib=3.11
   - pip:
     - -e .

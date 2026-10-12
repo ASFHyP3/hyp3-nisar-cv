@@ -49,6 +49,8 @@ def earthdata_session():
     return asf.ASFSession().auth_with_creds(username, password)
 
 def download_granule(product, session):
+    if not DATA_DIR.exists():
+        DATA_DIR.mkdir()
     granule = product.properties["sceneName"]
     print(f'starting download: {granule}')
     path = DATA_DIR
