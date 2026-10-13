@@ -3,6 +3,7 @@ README.md
 pyproject.toml
 src/nisar_cv/__init__.py
 src/nisar_cv/__main__.py
+src/nisar_cv/aws.py
 src/nisar_cv/gcov.py
 src/nisar_cv/process.py
 src/nisar_cv.egg-info/PKG-INFO
