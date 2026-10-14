@@ -5,5 +5,9 @@ output/
 #pycache
 /src/nisar_cv/__pycache__/
 
+#setup files
+*.egg-info/
+*.egg
+
 #pycharm
 .idea/
