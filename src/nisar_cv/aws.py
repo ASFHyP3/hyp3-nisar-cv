@@ -1,18 +1,14 @@
 """ "Tools for working with AWS"""
 
 import logging
-import os
 from mimetypes import guess_type
 from pathlib import Path
 
 import boto3
 from boto3.s3.transfer import TransferConfig
 
-if os.environ.get("AWS_PROFILE"):
-    session = boto3.Session(profile_name=os.environ.get("AWS_PROFILE"))
-    S3_CLIENT = session.client("s3")
-else:
-    S3_CLIENT = boto3.client("s3")
+S3_CLIENT = boto3.client("s3")
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
