@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import netrc
 from dataclasses import dataclass
 from pathlib import Path
@@ -5,68 +7,86 @@ from pathlib import Path
 import asf_search as asf
 import h5py
 import numpy as np
+from numpy import typing as npt
 from osgeo import gdal, gdal_array, ogr, osr
 
-DATA_DIR = Path('data')
-OUTPUT_DIR = Path('output')
+DATA_DIR = Path("data")
+OUTPUT_DIR = Path("output")
 
-GCOV_GRID_PATH = 'science/LSAR/GCOV/grids/frequencyA'
-EARTHDATA_HOST = 'urs.earthdata.nasa.gov'
+GCOV_GRID_PATH = "science/LSAR/GCOV/grids/frequencyA"
+EARTHDATA_HOST = "urs.earthdata.nasa.gov"
+
 
 @dataclass(frozen=True)
 class Grid:
     """Map grid of a (possibly subset) GCOV layer. Coordinates are pixel centers."""
 
     epsg: int
-    x: np.ndarray
-    y: np.ndarray
+    x: npt.NDArray[np.floating]
+    y: npt.NDArray[np.floating]
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int, int]:
         return len(self.y), len(self.x)
 
     @property
-    def geotransform(self):
+    def geotransform(self) -> tuple[float, float, float, float, float, float]:
         dx = self.x[1] - self.x[0]
         dy = self.y[1] - self.y[0]
-        return (self.x[0] - dx / 2, dx, 0.0, self.y[0] - dy / 2, 0.0, dy)
+        return (
+            float(self.x[0] - dx / 2),
+            float(dx),
+            0.0,
+            float(self.y[0] - dy / 2),
+            0.0,
+            float(dy),
+        )
 
     @property
-    def srs(self):
+    def srs(self) -> osr.SpatialReference:
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(self.epsg)
         return srs
 
-    def same_as(self, other):
-        return self.epsg == other.epsg and np.array_equal(self.x, other.x) and np.array_equal(self.y, other.y)
+    def same_as(self, other: Grid) -> bool:
+        return (
+            self.epsg == other.epsg
+            and np.array_equal(self.x, other.x)
+            and np.array_equal(self.y, other.y)
+        )
 
-def earthdata_session():
+
+def earthdata_session() -> asf.ASFSession:
     """ASF session authenticated with the Earthdata Login credentials in ~/.netrc."""
     credentials = netrc.netrc().authenticators(EARTHDATA_HOST)
     if credentials is None:
-        raise ValueError(f'No {EARTHDATA_HOST} entry in ~/.netrc')
+        raise ValueError(f"No {EARTHDATA_HOST} entry in ~/.netrc")
     username, _, password = credentials
     return asf.ASFSession().auth_with_creds(username, password)
 
-def download_granule(product, session):
+
+def download_granule(product: asf.ASFProduct, session: asf.ASFSession) -> Path:
+    if not DATA_DIR.exists():
+        DATA_DIR.mkdir()
     granule = product.properties["sceneName"]
-    print(f'starting download: {granule}')
+    print(f"starting download: {granule}")
     path = DATA_DIR
     product.download(path=str(path), session=session)
 
-    print(f'finished download: {granule}')
-    return path/f'{granule}.h5'
+    print(f"finished download: {granule}")
+    return path / f"{granule}.h5"
 
-def remove_granule(granule):
-    path = DATA_DIR / f'{granule}.h5'
-    partial_dir = DATA_DIR / '.partial'
+
+def remove_granule(granule: str) -> None:
+    path = DATA_DIR / f"{granule}.h5"
+    partial_dir = DATA_DIR / ".partial"
     partial = partial_dir / path.name
     partial.unlink(missing_ok=True)
     path.unlink(missing_ok=True)
-    print(f'removed {granule}')
-    
+    print(f"removed {granule}")
 
-def project_wkt(wkt, epsg):
+
+def project_wkt(wkt: str, epsg: int) -> ogr.Geometry:
     """Reproject a WGS84 (lon/lat) WKT geometry to ``epsg``."""
     src = osr.SpatialReference()
     src.ImportFromEPSG(4326)
@@ -76,12 +96,16 @@ def project_wkt(wkt, epsg):
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)  # WKT is lon/lat
 
     geom = ogr.CreateGeometryFromWkt(wkt)
-    geom.Segmentize(0.01)  # densify so straight lon/lat edges stay accurate after reprojection
+    geom.Segmentize(
+        0.01
+    )  # densify so straight lon/lat edges stay accurate after reprojection
     geom.Transform(osr.CoordinateTransformation(src, dst))
     return geom
 
 
-def subset_window(wkt, x, y, epsg):
+def subset_window(
+    wkt: str, x: npt.NDArray[np.floating], y: npt.NDArray[np.floating], epsg: int
+) -> tuple[slice, slice]:
     """Row and column slices of the pixels that overlap the bounding box of a WGS84 WKT geometry."""
     minx, maxx, miny, maxy = project_wkt(wkt, epsg).GetEnvelope()
 
@@ -93,44 +117,56 @@ def subset_window(wkt, x, y, epsg):
     return slice(rows[0], rows[-1] + 1), slice(cols[0], cols[-1] + 1)
 
 
-def read_gcov_layer(h5_path, pol='HHHH', subset_wkt=None):
+def read_gcov_layer(
+    h5_path: Path, pol: str = "HHHH", subset_wkt: str | None = None
+) -> tuple[npt.NDArray[np.floating], Grid]:
     """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry."""
-    with h5py.File(h5_path, 'r') as f:
+    with h5py.File(h5_path, "r") as f:
         grids = f[GCOV_GRID_PATH]
         if pol not in grids:
-            terms = [t.decode() for t in grids['listOfCovarianceTerms'][()]]
-            raise ValueError(f'{pol} not in {Path(h5_path).name}; available terms: {terms}')
-        x = grids['xCoordinates'][()]
-        y = grids['yCoordinates'][()]
-        epsg = int(grids['projection'][()])
+            terms = [t.decode() for t in grids["listOfCovarianceTerms"][()]]
+            raise ValueError(
+                f"{pol} not in {Path(h5_path).name}; available terms: {terms}"
+            )
+        x = grids["xCoordinates"][()]
+        y = grids["yCoordinates"][()]
+        epsg = int(grids["projection"][()])
 
         rows, cols = slice(None), slice(None)
         if subset_wkt:
             rows, cols = subset_window(subset_wkt, x, y, epsg)
-        layer = grids[pol][rows, cols]  # h5py reads only the chunks that overlap the window
+        layer = grids[pol][
+            rows, cols
+        ]  # h5py reads only the chunks that overlap the window
     return layer, Grid(epsg, x[cols], y[rows])
 
-def acquisition_date(granule):
-    return granule.split('_')[11][:8]
 
-def product_name(granules, pol):
+def acquisition_date(granule: str) -> str:
+    return granule.split("_")[11][:8]
+
+
+def product_name(granules: list[str], pol: str) -> str:
     """Name outputs by track, direction, frame, polarization, and date span of the stack."""
-    fields = granules[0].split('_')
+    fields = granules[0].split("_")
     track, direction, frame = fields[5], fields[6], fields[7]
     dates = sorted(acquisition_date(g) for g in granules)
-    return f'NISAR_{track}_{direction}_{frame}_{pol}_{dates[0]}_{dates[-1]}'
+    return f"NISAR_{track}_{direction}_{frame}_{pol}_{dates[0]}_{dates[-1]}"
 
-def write_geotiff(filename, array, grid, nodata):
+
+def write_geotiff(
+    filename: Path, array: npt.NDArray[np.number], grid: Grid, nodata: float | None
+) -> Path:
     """Write a single-band Cloud Optimized GeoTIFF to OUTPUT_DIR."""
     OUTPUT_DIR.mkdir(exist_ok=True)
     path = OUTPUT_DIR / filename
-    path = str(path)
 
     gdal_type = gdal_array.NumericTypeCodeToGDALTypeCode(array.dtype)
-    ds = gdal.GetDriverByName('COG').Create(str(path), grid.shape[1], grid.shape[0], 1, gdal_type)
+    ds = gdal.GetDriverByName("COG").Create(
+        str(path), grid.shape[1], grid.shape[0], 1, gdal_type
+    )
     ds.SetGeoTransform(grid.geotransform)
     ds.SetProjection(grid.srs.ExportToWkt())
     band = ds.GetRasterBand(1)
     band.SetNoDataValue(nodata)
     band.WriteArray(array)
-    return path
+    return Path(path)

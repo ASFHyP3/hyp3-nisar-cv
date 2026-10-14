@@ -19,3 +19,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+install_types = true
+disable_error_code = ["import-untyped"]
