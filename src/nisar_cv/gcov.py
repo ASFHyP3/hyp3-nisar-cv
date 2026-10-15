@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import netrc
 from dataclasses import dataclass
 from pathlib import Path
@@ -58,6 +59,8 @@ class Grid:
 
 def earthdata_session() -> asf.ASFSession:
     """ASF session authenticated with the Earthdata Login credentials in ~/.netrc."""
+    if token := os.environ.get("EARTHDATA_TOKEN"):
+        return asf.ASFSession().auth_with_token(token)
     credentials = netrc.netrc().authenticators(EARTHDATA_HOST)
     if credentials is None:
         raise ValueError(f"No {EARTHDATA_HOST} entry in ~/.netrc")
