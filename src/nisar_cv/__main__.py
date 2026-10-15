@@ -48,7 +48,7 @@ def main() -> None:
         "--water-threshold-db",
         type=float,
         default=process.WATER_THRESH_DB,
-        help="Backscatter threshold, in decibels, for watermask generation. Pixels with backscatter below this threshold in more than --water-fraction % of images are classified as water.",
+        help="Backscatter threshold, in decibels, for watermask generation. Pixels with backscatter below this threshold in more than --water-fraction %% of images are classified as water.",
     )
     parser.add_argument(
         "--water-fraction",
