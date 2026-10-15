@@ -63,7 +63,7 @@ class WelfordCV:
         return out
 
     def water_mask(self, frac: float = WATER_FRACTION) -> npt.NDArray[np.uint8]:
-        return (self.n_water > frac * self.n_layers).astype(np.uint8)
+        return ((self.n > 0) & (self.n_water > frac * self.n)).astype(np.uint8)
 
 
 @dataclass
