@@ -15,6 +15,7 @@ DATA_DIR = Path("data")
 OUTPUT_DIR = Path("output")
 
 GCOV_GRID_PATH = "science/LSAR/GCOV/grids/frequencyA"
+GCOV_MASK_FILL = 255  # mask: 0 = partially focused or invalid (incl. transmit gaps), 255 = outside acquisition
 EARTHDATA_HOST = "urs.earthdata.nasa.gov"
 
 
