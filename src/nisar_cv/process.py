@@ -177,6 +177,9 @@ def process_cv(
         gcov.write_geotiff(
             Path(f"{name}_CV_{res}m.tif"), cv_agg, agg_grid, nodata=np.nan
         ),
+        gcov.write_geotiff(
+            Path(f"{name}_NVALID.tif"), stats.n.astype(np.uint8), grid, nodata=0
+        ),
     ]
     return CVResult(name, cv, stats, grid, outputs)
 
