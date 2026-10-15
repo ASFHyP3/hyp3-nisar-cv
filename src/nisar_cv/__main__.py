@@ -6,6 +6,10 @@ from nisar_cv import process
 from nisar_cv.aws import upload_file_to_s3
 
 
+def string_is_true(s: str) -> bool:
+    return s.lower() == "true"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -31,7 +35,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--crop-area",
-        type=bool,
+        type=string_is_true,
         default=False,
         help="Choose whether to generate a crop area classification map. If False, only a coefficient of variation file is created.",
     )
@@ -45,7 +49,7 @@ def main() -> None:
         "--water-threshold-db",
         type=float,
         default=process.WATER_THRESH_DB,
-        help="Backscatter threshold, in decibels, for watermask generation. Pixels with backscatter below this threshold in more than --water-fraction % of images are classified as water.",
+        help="Backscatter threshold, in decibels, for watermask generation. Pixels with backscatter below this threshold in more than --water-fraction %% of images are classified as water.",
     )
     parser.add_argument(
         "--water-fraction",
