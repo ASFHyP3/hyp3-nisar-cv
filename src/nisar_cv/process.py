@@ -131,6 +131,7 @@ def process_cv(
     pol: str = "HHHH",
     subset_wkt: str | None = None,
     water_thresh_db: float = WATER_THRESH_DB,
+    save_gcovs: bool = False
 ) -> CVResult:
     """Compute the CV of a GCOV stack and write it at native resolution and AGGREGATE_RESOLUTION.
 
@@ -147,7 +148,7 @@ def process_cv(
     stats = None
     grid = None
     for i, product in enumerate(products, start=1):
-        # granule = granules[i]
+
         granule = product.properties["sceneName"]
         h5_path = gcov.download_granule(product, session)
         layer, layer_grid = gcov.read_gcov_layer(h5_path, pol, subset_wkt)
@@ -158,6 +159,10 @@ def process_cv(
 
         print("performing Welford with layer")
         stats.update(layer)
+
+        if save_gcovs:
+            gcov.write_geotiff(Path(f"{granule}.tif"),layer,layer_grid,nodata=np.nan)
+
         del layer
         gcov.remove_granule(granule)
 

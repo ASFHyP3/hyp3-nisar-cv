@@ -6,6 +6,13 @@ from nisar_cv import process
 from nisar_cv.aws import upload_file_to_s3
 
 
+def str_to_bool(s: str) -> bool:
+    if s.lower() in ("true", "1", "yes"):
+        return True
+    if s.lower() in ("false", "0", "no"):
+        return False
+    raise argparse.ArgumentTypeError(f"expected True or False, got {s!r}")
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -31,7 +38,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--crop-area",
-        type=bool,
+        type=str_to_bool,
         default=False,
         help="Choose whether to generate a crop area classification map. If False, only a coefficient of variation file is created.",
     )
@@ -45,7 +52,7 @@ def main() -> None:
         "--water-threshold-db",
         type=float,
         default=process.WATER_THRESH_DB,
-        help="Backscatter threshold, in decibels, for watermask generation. Pixels with backscatter below this threshold in more than --water-fraction % of images are classified as water.",
+        help="Backscatter threshold, in decibels, for watermask generation. Pixels with backscatter below this threshold in more than --water-fraction %% of images are classified as water.",
     )
     parser.add_argument(
         "--water-fraction",
@@ -64,6 +71,12 @@ def main() -> None:
         type=str,
         help="Add a bucket prefix to product(s)",
     )
+    parser.add_argument(
+        "--save-gcovs",
+        default=False,
+        type=str_to_bool,
+        help="Save GCOV layers used in product generation, presented as geotiffs with subset applied",
+    )
     args = parser.parse_args()
     args.granules = [g for group in args.granules for g in group]
 
@@ -72,6 +85,7 @@ def main() -> None:
         pol=args.pol,
         subset_wkt=args.subset,
         water_thresh_db=args.water_threshold_db,
+        save_gcovs=args.save_gcovs
     )
     if args.crop_area:
         process.process_crop_area(
