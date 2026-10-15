@@ -7,7 +7,8 @@ from nisar_cv.aws import upload_file_to_s3
 
 
 def string_is_true(s: str) -> bool:
-    return s.lower() == 'true'
+    return s.lower() == "true"
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
