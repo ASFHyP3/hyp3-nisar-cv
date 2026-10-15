@@ -214,7 +214,7 @@ def process_crop_area(
         gcov.write_geotiff(
             Path(f"{name}_WATER.tif"), water, grid, nodata=WATER_MASK_NODATA
         ),
-        gcov.write_geotiff(Path(f"{name}_CROP.tif"), crop, grid, nodata=NODATA),
+        # gcov.write_geotiff(Path(f"{name}_CROP.tif"), crop, grid, nodata=NODATA),
         gcov.write_geotiff(
             Path(f"{name}_CROP_{res}m.tif"), crop_agg, agg_grid, nodata=NODATA
         ),
