@@ -5,8 +5,10 @@ import argparse
 from nisar_cv import process
 from nisar_cv.aws import upload_file_to_s3
 
+
 def string_is_true(s: str) -> bool:
     return s.lower() == "true"
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -80,7 +82,7 @@ def main() -> None:
         pol=args.pol,
         subset_wkt=args.subset,
         water_thresh_db=args.water_threshold_db,
-        save_gcovs=args.save_gcovs
+        save_gcovs=args.save_gcovs,
     )
     if args.crop_area:
         process.process_crop_area(
