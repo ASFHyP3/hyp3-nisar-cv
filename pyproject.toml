@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nisar_cv"
-version = "0.1.0"
 description = "Coefficient of variation and crop area from NISAR GCOV time series."
 readme = "README.md"
 requires-python = ">=3.12"
 # Dependencies are managed in environment.yml (gdal comes from conda-forge)
 dependencies = []
+
+dynamic = ["version"]
 
 [project.scripts]
 nisar_cv = "nisar_cv.__main__:main"

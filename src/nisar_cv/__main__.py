@@ -5,13 +5,8 @@ import argparse
 from nisar_cv import process
 from nisar_cv.aws import upload_file_to_s3
 
-
-def str_to_bool(s: str) -> bool:
-    if s.lower() in ("true", "1", "yes"):
-        return True
-    if s.lower() in ("false", "0", "no"):
-        return False
-    raise argparse.ArgumentTypeError(f"expected True or False, got {s!r}")
+def string_is_true(s: str) -> bool:
+    return s.lower() == "true"
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -38,7 +33,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--crop-area",
-        type=str_to_bool,
+        type=string_is_true,
         default=False,
         help="Choose whether to generate a crop area classification map. If False, only a coefficient of variation file is created.",
     )
@@ -74,7 +69,7 @@ def main() -> None:
     parser.add_argument(
         "--save-gcovs",
         default=False,
-        type=str_to_bool,
+        type=string_is_true,
         help="Save GCOV layers used in product generation, presented as geotiffs with subset applied",
     )
     args = parser.parse_args()
