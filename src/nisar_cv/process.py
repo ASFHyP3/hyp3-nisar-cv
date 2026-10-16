@@ -30,7 +30,7 @@ class WelfordCV:
         self.water_thresh_lin: float = 10 ** (
             water_thresh_db / 10
         )  # compare in linear power, skip log10 of the layer
-        self.n: npt.NDArray[np.floating] = np.zeros(
+        self.n_valid: npt.NDArray[np.floating] = np.zeros(
             shape, np.uint16
         )  # valid-sample count per pixel
         self.mean: npt.NDArray[np.floating] = np.zeros(
@@ -51,19 +51,21 @@ class WelfordCV:
             x <= self.water_thresh_lin
         )  # NaN compares False, as in the notebook
         valid = np.isfinite(x) & (x > 0)
-        self.n += valid
+        self.n_valid += valid
         d = np.where(valid, x - self.mean, 0.0)
-        self.mean += np.divide(d, self.n, out=np.zeros_like(x), where=valid)
+        self.mean += np.divide(d, self.n_valid, out=np.zeros_like(x), where=valid)
         self.m2 += d * np.where(valid, x - self.mean, 0.0)
 
     def cv(self, min_n: int = MIN_ACQUISITIONS) -> npt.NDArray[np.floating]:
-        out = np.full(self.n.shape, np.nan, np.float32)
-        ok = self.n >= min_n
-        out[ok] = np.sqrt(self.m2[ok] / (self.n[ok])) / self.mean[ok]
+        out = np.full(self.n_valid.shape, np.nan, np.float32)
+        ok = self.n_valid >= min_n
+        out[ok] = np.sqrt(self.m2[ok] / (self.n_valid[ok])) / self.mean[ok]
         return out
 
     def water_mask(self, frac: float = WATER_FRACTION) -> npt.NDArray[np.uint8]:
-        return (self.n_water > frac * self.n_layers).astype(np.uint8)
+        return ((self.n_valid > 0) & (self.n_water > frac * self.n_valid)).astype(
+            np.uint8
+        )
 
 
 @dataclass
@@ -131,6 +133,7 @@ def process_cv(
     pol: str = "HHHH",
     subset_wkt: str | None = None,
     water_thresh_db: float = WATER_THRESH_DB,
+    save_gcovs: bool = False,
 ) -> CVResult:
     """Compute the CV of a GCOV stack and write it at native resolution and AGGREGATE_RESOLUTION.
 
@@ -147,7 +150,6 @@ def process_cv(
     stats = None
     grid = None
     for i, product in enumerate(products, start=1):
-        # granule = granules[i]
         granule = product.properties["sceneName"]
         h5_path = gcov.download_granule(product, session)
         layer, layer_grid = gcov.read_gcov_layer(h5_path, pol, subset_wkt)
@@ -158,6 +160,10 @@ def process_cv(
 
         print("performing Welford with layer")
         stats.update(layer)
+
+        if save_gcovs:
+            gcov.write_geotiff(Path(f"{granule}.tif"), layer, layer_grid, nodata=np.nan)
+
         del layer
         gcov.remove_granule(granule)
 
@@ -171,6 +177,9 @@ def process_cv(
         gcov.write_geotiff(Path(f"{name}_CV.tif"), cv, grid, nodata=np.nan),
         gcov.write_geotiff(
             Path(f"{name}_CV_{res}m.tif"), cv_agg, agg_grid, nodata=np.nan
+        ),
+        gcov.write_geotiff(
+            Path(f"{name}_NVALID.tif"), stats.n_valid.astype(np.uint8), grid, nodata=0
         ),
     ]
     return CVResult(name, cv, stats, grid, outputs)
@@ -198,7 +207,7 @@ def process_crop_area(
 
     water = result.stats.water_mask(water_fraction)
     crop = classify_crop(result.cv, water, cv_threshold)
-    water[result.stats.n == 0] = WATER_MASK_NODATA
+    water[result.stats.n_valid == 0] = WATER_MASK_NODATA
 
     name, grid, res = result.name, result.grid, AGGREGATE_RESOLUTION
     crop_agg, agg_grid = aggregate(crop, grid, res, nodata=NODATA)
@@ -206,7 +215,8 @@ def process_crop_area(
         gcov.write_geotiff(
             Path(f"{name}_WATER.tif"), water, grid, nodata=WATER_MASK_NODATA
         ),
-        gcov.write_geotiff(Path(f"{name}_CROP.tif"), crop, grid, nodata=NODATA),
+        # crop area at native resolution removed, hectare scale much more realistic. Uncomment to readd:
+        # gcov.write_geotiff(Path(f"{name}_CROP.tif"), crop, grid, nodata=NODATA),
         gcov.write_geotiff(
             Path(f"{name}_CROP_{res}m.tif"), crop_agg, agg_grid, nodata=NODATA
         ),

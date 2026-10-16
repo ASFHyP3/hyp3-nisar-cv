@@ -24,9 +24,10 @@ python src/nisar_cv \
     --subset 'POLYGON((-91.2399 45.1589,-90.7532 45.1589,-90.7532 45.4609,-91.2399 45.4609,-91.2399 45.1589))'
 ```
 
-Additional parameters: `--pol` (default `HHHH`), and crop area parameters: `--no-crop-area` (default `False`),
+Additional parameters: `--pol` (default `HHHH`), and crop area parameters: `--crop-area` (default `False`),
 `--cv-threshold` (default `0.4`), `--water-threshold-db` (default `16.5`, in dB), `--water-fraction` (default `0.75`)
-for fraction of scenes below the threshold to count as water.
+for fraction of scenes below the threshold to count as water. `--save-gcovs` (default `False`) will return a geotif
+for each GCOV layer (subset if subset provided).
 
 
 ### Earthdata Login Credentials

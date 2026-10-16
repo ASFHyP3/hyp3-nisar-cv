@@ -14,6 +14,7 @@ DATA_DIR = Path("data")
 OUTPUT_DIR = Path("output")
 
 GCOV_GRID_PATH = "science/LSAR/GCOV/grids/frequencyA"
+GCOV_MASK_FILL = 255  # mask: 0 = partially focused or invalid (incl. transmit gaps), 255 = outside acquisition
 EARTHDATA_HOST = "urs.earthdata.nasa.gov"
 
 
@@ -120,7 +121,9 @@ def subset_window(
 def read_gcov_layer(
     h5_path: Path, pol: str = "HHHH", subset_wkt: str | None = None
 ) -> tuple[npt.NDArray[np.floating], Grid]:
-    """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry."""
+    """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry.
+    Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
+    acquisition are set to NaN."""
     with h5py.File(h5_path, "r") as f:
         grids = f[GCOV_GRID_PATH]
         if pol not in grids:
@@ -138,6 +141,10 @@ def read_gcov_layer(
         layer = grids[pol][
             rows, cols
         ]  # h5py reads only the chunks that overlap the window
+        mask = grids["mask"][rows, cols]
+
+    valid = (mask > 0) & (mask != GCOV_MASK_FILL)
+    layer = np.where(valid, layer, np.nan).astype(np.float32)
     return layer, Grid(epsg, x[cols], y[rows])
 
 

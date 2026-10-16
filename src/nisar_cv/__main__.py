@@ -68,6 +68,12 @@ def main() -> None:
         type=str,
         help="Add a bucket prefix to product(s)",
     )
+    parser.add_argument(
+        "--save-gcovs",
+        default=False,
+        type=string_is_true,
+        help="Save GCOV layers used in product generation, presented as geotiffs with subset applied",
+    )
     args = parser.parse_args()
     args.granules = [g for group in args.granules for g in group]
 
@@ -76,6 +82,7 @@ def main() -> None:
         pol=args.pol,
         subset_wkt=args.subset,
         water_thresh_db=args.water_threshold_db,
+        save_gcovs=args.save_gcovs,
     )
     if args.crop_area:
         process.process_crop_area(
