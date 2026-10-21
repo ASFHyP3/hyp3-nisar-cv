@@ -85,7 +85,7 @@ def main() -> None:
         save_gcovs=args.save_gcovs,
     )
     if args.crop_area:
-        process.process_crop_area(
+        result = process.process_crop_area(
             result, cv_threshold=args.cv_threshold, water_fraction=args.water_fraction
         )
 

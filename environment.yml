@@ -4,7 +4,7 @@ channels:
   - nodefaults
 dependencies:
   - python>=3.12
-  - pip=26.2
+  - pip>=26.2.2
   # For running
   - asf_search=14.0
   - gdal=3.13
