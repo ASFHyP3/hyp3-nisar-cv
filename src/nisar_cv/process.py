@@ -202,7 +202,7 @@ def process_crop_area(
     result: CVResult,
     cv_threshold: float = CV_THRESHOLD,
     water_fraction: float = WATER_FRACTION,
-) -> list[Path]:
+) -> CVResult:
     """Write the water mask, and the crop area at AGGREGATE_RESOLUTION."""
 
     water = result.stats.water_mask(water_fraction)
@@ -211,13 +211,16 @@ def process_crop_area(
 
     name, grid, res = result.name, result.grid, AGGREGATE_RESOLUTION
     crop_agg, agg_grid = aggregate(crop, grid, res, nodata=NODATA)
-    return [
-        gcov.write_geotiff(
-            Path(f"{name}_WATER.tif"), water, grid, nodata=WATER_MASK_NODATA
-        ),
-        # crop area at native resolution removed, hectare scale much more realistic. Uncomment to readd:
-        # gcov.write_geotiff(Path(f"{name}_CROP.tif"), crop, grid, nodata=NODATA),
-        gcov.write_geotiff(
-            Path(f"{name}_CROP_{res}m.tif"), crop_agg, agg_grid, nodata=NODATA
-        ),
-    ]
+    result.outputs.extend(
+        [
+            gcov.write_geotiff(
+                Path(f"{name}_WATER.tif"), water, grid, nodata=WATER_MASK_NODATA
+            ),
+            # crop area at native resolution removed, hectare scale much more realistic. Uncomment to readd:
+            # gcov.write_geotiff(Path(f"{name}_CROP.tif"), crop, grid, nodata=NODATA),
+            gcov.write_geotiff(
+                Path(f"{name}_CROP_{res}m.tif"), crop_agg, agg_grid, nodata=NODATA
+            ),
+        ]
+    )
+    return result

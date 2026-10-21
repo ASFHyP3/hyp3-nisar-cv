@@ -85,10 +85,9 @@ def main() -> None:
         save_gcovs=args.save_gcovs,
     )
     if args.crop_area:
-        process.process_crop_area(
+        result = process.process_crop_area(
             result, cv_threshold=args.cv_threshold, water_fraction=args.water_fraction
         )
-
     if args.bucket:
         for file in result.outputs:
             upload_file_to_s3(file, args.bucket, args.bucket_prefix)
