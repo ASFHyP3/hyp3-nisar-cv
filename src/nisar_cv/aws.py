@@ -1,16 +1,17 @@
 """Tools for working with AWS"""
 
-
 import logging
 from mimetypes import guess_type
 from pathlib import Path
 
 import boto3
 from boto3.s3.transfer import TransferConfig
+
 S3_CLIENT = boto3.client("s3")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def get_tag_set(file_name: str) -> dict:
     if file_name.endswith("_rgb_thumb.png"):

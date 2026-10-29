@@ -1,8 +1,11 @@
-from osgeo import gdal, osr
-from nisar_cv.gcov import acquisition_date, acquisition_frame
-from pathlib import Path
-from nisar_cv.aws import get_content_type
 import json
+from pathlib import Path
+
+from osgeo import gdal, osr
+
+from nisar_cv.aws import get_content_type
+from nisar_cv.gcov import acquisition_date, acquisition_frame
+
 
 def build_nisar_cv_asset(asset_fp: Path) -> dict:
     """
@@ -36,15 +39,16 @@ def build_nisar_cv_asset(asset_fp: Path) -> dict:
         asset_fp,
         asset_roles=asset_roles,
         description=description,
-        asset_type=asset_type)
+        asset_type=asset_type,
+    )
 
 
 def build_asset(
-        asset_fp: Path,
-        parent: Path = Path("."),
-        asset_roles: list[str] | tuple[str] = ("data",),
-        description: str = "",
-        asset_type: str = ""
+    asset_fp: Path,
+    parent: Path = Path("."),
+    asset_roles: list[str] | tuple[str] = ("data",),
+    description: str = "",
+    asset_type: str = "",
 ) -> dict:
     asset_roles = list(asset_roles)
     if not asset_type:
@@ -61,15 +65,15 @@ def build_asset(
 
 
 def write_stac_file(
-        stac_file: Path,
-        stac_id: str,
-        bounding_box: list[float],
-        assets: dict,
-        properties: dict,
-        collection: str,
-        stac_url: str | Path
+    stac_file: Path,
+    stac_id: str,
+    bounding_box: list[float],
+    assets: dict,
+    properties: dict,
+    collection: str,
+    stac_url: str | Path,
 ) -> Path:
-    assert 'datetime' in properties.keys(), "Field 'datetime' required in properties"
+    assert "datetime" in properties, "Field 'datetime' required in properties"
     stac_dict = {
         "type": "Feature",
         "stac_version": "1.1.0",
@@ -105,7 +109,7 @@ def write_stac_file(
 
 
 def get_bounding_box_union(geotiff_fps) -> list[float]:
-    bounding_box = []
+    bounding_box:list[float] = []
     for geotiff_fp in geotiff_fps:
         dataset = gdal.Open(str(geotiff_fp))
         srs = osr.SpatialReference()
@@ -122,17 +126,14 @@ def get_bounding_box_union(geotiff_fps) -> list[float]:
 
 
 def create_nisar_cv_stac_item(
-        granules: list[str],
-        product_fps: list[Path],
-        bucket: str,
-        prefix: str = ""
+    granules: list[str], product_fps: list[Path], bucket: str, prefix: str = ""
 ) -> Path:
     """
     Create a JSON STAC item from the output files which are going in the s3 bucket.
     """
     stac_id = f"nisar-cv-{prefix}"
     stac_file = f"{stac_id}.stac.json"
-    stac_fp = Path('./output') / stac_file
+    stac_fp = Path("./output") / stac_file
     key = str(Path(prefix) / stac_file)
     stac_url = f"s3://{bucket}/{key}"
 
@@ -171,7 +172,7 @@ def create_nisar_cv_stac_item(
         "start_datetime": start_datetime.isoformat(),
         "end_datetime": end_datetime.isoformat(),
         "datetime": mid_datetime.isoformat(),
-        "frames": list(granule_frames)
+        "frames": list(granule_frames),
     }
 
     write_stac_file(
@@ -180,8 +181,8 @@ def create_nisar_cv_stac_item(
         bounding_box=bounding_box,
         properties=properties,
         assets=assets,
-        collection="nisar-bridge",
-        stac_url=stac_url
+        collection="nisar-cv",
+        stac_url=stac_url,
     )
 
     return stac_fp

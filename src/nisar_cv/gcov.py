@@ -152,8 +152,10 @@ def read_gcov_layer(
 def acquisition_date(granule: str) -> datetime:
     return datetime.strptime(granule.split("_")[11][:8], "%Y%m%d")
 
+
 def acquisition_frame(granule: str) -> str:
     return "_".join(granule.split("_")[1:3])
+
 
 def product_name(granules: list[str], pol: str) -> str:
     """Name outputs by track, direction, frame, polarization, and date span of the stack."""
