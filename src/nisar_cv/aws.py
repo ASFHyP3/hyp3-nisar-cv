@@ -8,7 +8,7 @@ from pathlib import Path
 import boto3
 from boto3.s3.transfer import TransferConfig
 from osgeo import gdal, osr
-
+from typing import Union
 from nisar_cv.gcov import acquisition_date
 
 S3_CLIENT = boto3.client("s3")
@@ -16,6 +16,11 @@ S3_CLIENT = boto3.client("s3")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def get_content_type(file_location: Union[Path, str]) -> str:
+    content_type = guess_type(file_location)[0]
+    if not content_type:
+        content_type = 'application/octet-stream'
+    return content_type
 
 def get_tag_set(file_name: str) -> dict:
     if file_name.endswith("_rgb_thumb.png"):
@@ -58,15 +63,17 @@ def upload_file_to_s3(
 
 
 def build_asset(
-    asset_name: Path,
+    asset_fp: Path,
     parent: Path = Path("."),
-    asset_type: str = "data",
+    asset_roles: str = "data",
     description: str = "",
 ) -> dict:
+    asset_type = get_content_type(asset_fp)
     asset = {
-        "href": str(parent / asset_name),
+        "href": str(parent / asset_fp.name),
+        "roles": [asset_roles],
         "type": asset_type,
-        "title": str(Path(asset_name.stem)),
+        "title": str(Path(asset_fp.stem)),
         "description": description,
     }
     return asset
@@ -105,7 +112,7 @@ def create_stac_item(
             bounding_box[3] = max(bounding_box[3], dataset_bounds[3])
         print(f"bounding_box: {bounding_box}")
         file_list.append(product_fp.name)
-        assets[product_fp.stem] = build_asset(Path(product_fp.name))
+        assets[product_fp.stem] = build_asset(Path(product_fp))
     # get date and time from granule names
     for granule in granules:
         granule_date = acquisition_date(granule)
