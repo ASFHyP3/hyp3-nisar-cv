@@ -152,7 +152,7 @@ def create_stac_item(
             {
                 "rel": "self",
                 "href": str(stac_url),
-                "title": "stac_id STAC Item",
+                "title": f"{stac_id} STAC Item",
                 "type": "application/geo+json",
             }
         ],
