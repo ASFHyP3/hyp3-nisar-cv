@@ -3,8 +3,8 @@
 import argparse
 
 from nisar_cv import process
-from nisar_cv.aws import create_stac_item, upload_file_to_s3
-
+from nisar_cv.aws import upload_file_to_s3
+from nisar_cv.stac import create_nisar_cv_stac_item
 
 def string_is_true(s: str) -> bool:
     return s.lower() == "true"
@@ -89,7 +89,7 @@ def main() -> None:
             result, cv_threshold=args.cv_threshold, water_fraction=args.water_fraction
         )
     result.outputs.append(
-        create_stac_item(args.granules, result.outputs, args.bucket, args.bucket_prefix)
+        create_nisar_cv_stac_item(args.granules, result.outputs, args.bucket, args.bucket_prefix)
     )
     if args.bucket:
         for file in result.outputs:
