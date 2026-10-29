@@ -7,7 +7,7 @@ from nisar_cv.aws import get_content_type
 from nisar_cv.gcov import acquisition_date, acquisition_frame
 
 
-def build_nisar_cv_asset(asset_fp: Path) -> dict:
+def build_nisar_cv_asset(asset_fp: Path, parent: str = '.') -> dict:
     """
     Build assets with more accurate descriptions based on NISAR-Cv scheme
     """
@@ -40,12 +40,13 @@ def build_nisar_cv_asset(asset_fp: Path) -> dict:
         asset_roles=asset_roles,
         description=description,
         asset_type=asset_type,
+        parent=parent
     )
 
 
 def build_asset(
     asset_fp: Path,
-    parent: Path = Path("."),
+    parent: Path = ".",
     asset_roles: list[str] | tuple[str] = ("data",),
     description: str = "",
     asset_type: str = "",
@@ -54,7 +55,7 @@ def build_asset(
     if not asset_type:
         asset_type = get_content_type(asset_fp)
     asset = {
-        "href": str(parent / asset_fp.name),
+        "href": f"{parent}/{asset_fp.name}",
         "roles": asset_roles,
         "type": asset_type,
         "title": str(Path(asset_fp.stem)),
@@ -146,7 +147,7 @@ def create_nisar_cv_stac_item(
     # find bounding box which includes all files
     for product_fp in product_fps:
         file_list.append(product_fp.name)
-        assets[product_fp.stem] = build_nisar_cv_asset(Path(product_fp))
+        assets[product_fp.stem] = build_nisar_cv_asset(Path(product_fp), parent = f"s3://{bucket}/{prefix}")
 
     bounding_box = get_bounding_box_union(product_fps)
     # get date and time from granule names
