@@ -8,19 +8,12 @@ from pathlib import Path
 import boto3
 from boto3.s3.transfer import TransferConfig
 from osgeo import gdal, osr
-from typing import Union
 from nisar_cv.gcov import acquisition_date
 
 S3_CLIENT = boto3.client("s3")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-def get_content_type(file_location: Union[Path, str]) -> str:
-    content_type = guess_type(file_location)[0]
-    if not content_type:
-        content_type = 'application/octet-stream'
-    return content_type
 
 def get_tag_set(file_name: str) -> dict:
     if file_name.endswith("_rgb_thumb.png"):
@@ -74,8 +67,9 @@ def build_asset(
         "roles": [asset_roles],
         "type": asset_type,
         "title": str(Path(asset_fp.stem)),
-        "description": description,
     }
+    if description:
+        asset["description"] = description
     return asset
 
 
