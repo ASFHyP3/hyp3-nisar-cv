@@ -8,7 +8,7 @@ from pathlib import Path
 import boto3
 from boto3.s3.transfer import TransferConfig
 from osgeo import gdal, osr
-from nisar_cv.gcov import acquisition_date
+from nisar_cv.gcov import acquisition_date, acquisition_frame
 
 S3_CLIENT = boto3.client("s3")
 
@@ -125,7 +125,7 @@ def create_stac_item(
     end_datetime = None
     file_list = []
     assets = {}
-
+    granule_frames = set()
     # find bounding box which includes all files
     for product_fp in product_fps:
         dataset = gdal.Open(str(product_fp))
@@ -145,6 +145,8 @@ def create_stac_item(
         assets[product_fp.stem] = build_nisar_cv_asset(Path(product_fp))
     # get date and time from granule names
     for granule in granules:
+        granule_frame = acquisition_frame(granule)
+        granule_frames.add(granule_frame)
         granule_date = acquisition_date(granule)
         print(f"granule_date: {granule_date}")
         if start_datetime is None:
@@ -182,6 +184,7 @@ def create_stac_item(
             "start_datetime": start_datetime.isoformat(),
             "end_datetime": end_datetime.isoformat(),
             "datetime": end_datetime.isoformat(),
+            "frames": granule_frames
         },
         "collection": "nisar-bridge",
         "links": [
