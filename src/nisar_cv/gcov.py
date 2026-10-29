@@ -158,7 +158,7 @@ def product_name(granules: list[str], pol: str) -> str:
     fields = granules[0].split("_")
     track, direction, frame = fields[5], fields[6], fields[7]
     dates = sorted(acquisition_date(g) for g in granules)
-    return f"NISAR_{track}_{direction}_{frame}_{pol}_{dates[0]}_{dates[-1]}"
+    return f"NISAR_{track}_{direction}_{frame}_{pol}_{dates[0].strftime('%Y%m%d')}_{dates[-1].strftime('%Y%m%d')}"
 
 
 def write_geotiff(

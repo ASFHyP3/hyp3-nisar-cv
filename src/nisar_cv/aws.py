@@ -81,7 +81,7 @@ def create_stac_item(
     stac_id = f"nisar-cv-{prefix}"
     stac_file = f"{stac_id}.stac.json"
     key = str(Path(prefix) / stac_file)
-    stac_url = Path(f"s3://{bucket}/{key}")
+    stac_url = f"s3://{bucket}/{key}"
 
     bounding_box: list = []
     start_datetime = None
