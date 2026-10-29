@@ -17,6 +17,8 @@ dependencies:
   - setuptools_scm=10.3.4
   # For quick-look plots during development
   - matplotlib=3.11
+  # for testing
+  - pytest=9.1.1
   - pip:
     - -e .
     #for linting and type checking
