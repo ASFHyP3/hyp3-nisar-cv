@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import netrc
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import asf_search as asf
@@ -148,8 +149,8 @@ def read_gcov_layer(
     return layer, Grid(epsg, x[cols], y[rows])
 
 
-def acquisition_date(granule: str) -> str:
-    return granule.split("_")[11][:8]
+def acquisition_date(granule: str) -> datetime:
+    return datetime.strptime(granule.split("_")[11][:8], "%Y%m%d")
 
 
 def product_name(granules: list[str], pol: str) -> str:
