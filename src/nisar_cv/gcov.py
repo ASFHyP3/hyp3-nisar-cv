@@ -154,7 +154,7 @@ def acquisition_date(granule: str) -> datetime:
 
 
 def acquisition_frame(granule: str) -> str:
-    return "_".join(granule.split("_")[1:3])
+    return "_".join(granule.split("_")[5:8])
 
 
 def product_name(granules: list[str], pol: str) -> str:
