@@ -143,7 +143,6 @@ def process_cv(
 
     names = list(granules)
     session = gcov.earthdata_session()
-    print(granules)
     products = asf.granule_search(granules)
     # print(products)
 
