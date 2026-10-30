@@ -117,12 +117,12 @@ def get_bounding_box_union(geotiff_fps) -> list[float]:
         srs.ImportFromEPSG(4326)
         gdal_dataset_bounds = list(dataset.GetExtent(srs=srs))
         print(f"dataset_bounds: {gdal_dataset_bounds}")
-        #GDAL bounds [latmin, latmax, lonmin, lonmax], so we need to redefine it to [lonmin, latmin, lonmax, latmax]
+        # GDAL bounds [latmin, latmax, lonmin, lonmax], so we need to redefine it to [lonmin, latmin, lonmax, latmax]
         dataset_bounds = [
             gdal_dataset_bounds[2],
             gdal_dataset_bounds[0],
             gdal_dataset_bounds[3],
-            gdal_dataset_bounds[1]
+            gdal_dataset_bounds[1],
         ]
         if not bounding_box:
             bounding_box = dataset_bounds
