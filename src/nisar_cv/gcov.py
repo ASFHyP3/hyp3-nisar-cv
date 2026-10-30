@@ -150,7 +150,8 @@ def read_gcov_layer(
 
 
 def acquisition_date(granule: str) -> datetime:
-    return datetime.strptime(granule.split("_")[11][:8], "%Y%m%d")
+    acquisition_datetime = datetime.strptime(granule.split("_")[11], "%Y%m%dT%H%M%S")
+    return acquisition_datetime
 
 
 def acquisition_frame(granule: str) -> str:
