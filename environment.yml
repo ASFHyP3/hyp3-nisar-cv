@@ -11,7 +11,6 @@ dependencies:
   - h5py=3.16
   - numpy=2.5
   - boto3=1.43
-  - pystac
   # For packaging, and testing
   - pytest=9.1
   - pytest-cov=7.1
@@ -23,3 +22,4 @@ dependencies:
     #for linting and type checking
     - ruff==0.17.0
     - mypy==2.4.0
+    - pystac[validation]

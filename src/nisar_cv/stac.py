@@ -95,8 +95,8 @@ def create_nisar_cv_stac_item(
 
     bounding_box = get_bounding_box_union(product_paths)
     # get date and time from granule names
-    granule_frames = set(acquisition_frame(granule) for granule in granules)
-    granule_dates = set(acquisition_date(granule) for granule in granules)
+    granule_frames = {acquisition_frame(granule) for granule in granules}
+    granule_dates = {acquisition_date(granule) for granule in granules}
     start_datetime = min(granule_dates)
     end_datetime = max(granule_dates)
     mid_datetime = start_datetime + (end_datetime - start_datetime) / 2
