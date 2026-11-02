@@ -14,7 +14,7 @@ def column(*values):
 
 def test_cv_matches_population_std_over_mean():
     stack = np.random.default_rng(0).uniform(0.01, 0.5, (6, 5, 4)).astype(np.float32)
-    expected = stack.std(axis=0) / stack.mean(axis=0)  # ddof=0
+    expected = stack.std(axis=0) / stack.mean(axis=0)
     np.testing.assert_allclose(run(stack).cv(), expected, rtol=1e-5)
 
 
