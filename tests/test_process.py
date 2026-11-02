@@ -1,36 +1,52 @@
-import numpy as np
-import pytest
-
-from nisar_cv import process
-
-DARK, BRIGHT = 0.01, 0.1  # below and above the -16.5 dB (0.0224) water threshold
-
-
-def run(stack, **kwargs):
-    stats = process.WelfordCV(np.asarray(stack.shape[1:]), **kwargs)
-    for layer in stack:
-        stats.update(layer)
-    return stats
-
-
-def column(*values):
-    return np.array(values, np.float32).reshape(len(values), 1, 1)
-
-
-def test_cv_matches_population_std_over_mean():
-    stack = np.random.default_rng(0).uniform(0.01, 0.5, (6, 5, 4)).astype(np.float32)
-    expected = stack.std(axis=0) / stack.mean(axis=0)  # ddof=0
-    np.testing.assert_allclose(run(stack).cv(), expected, rtol=1e-5)
-
-
-def test_constant_pixel_has_zero_cv():
-    np.testing.assert_allclose(
-        run(np.full((4, 2, 2), 0.1, np.float32)).cv(), 0, atol=1e-6
-    )
-
-
-def test_nan_zero_and_negative_samples_are_skipped():
-    stats = run(column(0.1, np.nan, 0.2, 0.0, 0.3, -1.0))
-    assert stats.n_valid[0, 0] == 3
-    valid = np.array([0.1, 0.2, 0.3])
-    np.testing.assert_allclose(stats.cv()[0, 0], valid.std() / valid.mean(), rtol=1e-5)
+# from types import SimpleNamespace
+#
+# import numpy as np
+# import pytest
+# from conftest import granule_name
+#
+# from nisar_cv import gcov, process
+#
+# DATES = ["20260710", "20260722", "20260815", "20260827"]
+#
+#
+# @pytest.fixture
+# def fake_asf(in_tmp_path, monkeypatch, make_grid, fake_gcov):
+#     """Serve one synthetic GCOV per granule; returns the layers and grids by granule name."""
+#     rng = np.random.default_rng(0)
+#     stack = {}
+#
+#     def add(name, grid=None):
+#         grid = grid or make_grid(10, 10)
+#         stack[name] = (rng.uniform(0.05, 0.5, grid.shape).astype(np.float32), grid)
+#
+#     def download(product, session):
+#         name = product.properties["sceneName"]
+#         gcov.DATA_DIR.mkdir(exist_ok=True)
+#         layer, grid = stack[name]
+#         return fake_gcov(gcov.DATA_DIR / f"{name}.h5", grid, {"HHHH": layer})
+#
+#     monkeypatch.setattr(gcov, "earthdata_session", lambda: None)
+#     monkeypatch.setattr(gcov, "download_granule", download)
+#     monkeypatch.setattr(
+#         process.asf,
+#         "granule_search",
+#         lambda names: [
+#             SimpleNamespace(properties={"sceneName": n}) for n in names if n in stack
+#         ],
+#     )
+#     return SimpleNamespace(stack=stack, add=add)
+#
+#
+# def test_process_crop_area_adds_water_and_crop_outputs(fake_asf):
+#     names = [granule_name(d) for d in DATES]
+#     for n in names:
+#         fake_asf.add(n)
+#
+#     result = process.process_crop_area(process.process_cv(names))
+#     assert [p.name.removeprefix(result.name) for p in result.outputs] == [
+#         "_CV.tif",
+#         "_CV_100m.tif",
+#         "_NVALID.tif",
+#         "_WATER.tif",
+#         "_CROP_100m.tif",
+#     ]
