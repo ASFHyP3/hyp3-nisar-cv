@@ -48,12 +48,12 @@ def build_nisar_cv_asset(asset_path: Path, parent: str = ".") -> pystac.Asset:
     )
 
 
-def get_bounding_box_union(geotiff_paths) -> list[float]:
+def get_bounding_box_union(geotiff_paths: list[Path]) -> list[float]:
     bounding_box: list[float] = []
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
     for geotiff_path in geotiff_paths:
         dataset = gdal.Open(str(geotiff_path))
-        srs = osr.SpatialReference()
-        srs.ImportFromEPSG(4326)
         gdal_dataset_bounds = list(dataset.GetExtent(srs=srs))
         # GDAL bounds [latmin, latmax, lonmin, lonmax], so we need to redefine it to [lonmin, latmin, lonmax, latmax]
         dataset_bounds = [
@@ -83,12 +83,9 @@ def create_nisar_cv_stac_item(
     stac_path = Path("./output") / stac_file
     key = str(Path(prefix) / stac_file)
     stac_url = f"s3://{bucket}/{key}"
-
-    start_datetime = None
-    end_datetime = None
     file_list = []
     assets = {}
-    granule_frames = set()
+
     # find bounding box which includes all files
     for product_path in product_paths:
         file_list.append(product_path.name)
@@ -98,28 +95,12 @@ def create_nisar_cv_stac_item(
 
     bounding_box = get_bounding_box_union(product_paths)
     # get date and time from granule names
-    for granule in granules:
-        granule_frame = acquisition_frame(granule)
-        granule_frames.add(granule_frame)
-        granule_date = acquisition_date(granule)
-        if start_datetime is None:
-            start_datetime = granule_date
-        else:
-            start_datetime = min(granule_date, start_datetime)
-        if end_datetime is None:
-            end_datetime = granule_date
-        else:
-            end_datetime = max(granule_date, end_datetime)
-        print(
-            f"start_datetime: {start_datetime.isoformat()}, end_datetime: {end_datetime.isoformat()}"
-        )
-    assert start_datetime is not None, "No dataset start date found!"
-    assert end_datetime is not None, "No dataset end date found!"
+    granule_frames = set(acquisition_frame(granule) for granule in granules)
+    granule_dates = set(acquisition_date(granule) for granule in granules)
+    start_datetime = min(granule_dates)
+    end_datetime = max(granule_dates)
     mid_datetime = start_datetime + (end_datetime - start_datetime) / 2
     properties = {
-        "start_datetime": start_datetime.isoformat(),
-        "end_datetime": end_datetime.isoformat(),
-        "datetime": mid_datetime.isoformat(),
         "frames": list(granule_frames),
     }
     stac_item = pystac.Item(
