@@ -119,7 +119,7 @@ def create_nisar_cv_stac_item(
         },
         bbox=bounding_box,
         properties=properties,
-        collection="nisar-cv",
+        # collection="nisar-cv", #not currently defined, will be defined in the future
         href=str(stac_url),
         assets=assets,
         datetime=mid_datetime,
