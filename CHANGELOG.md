@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
  - A STAC JSON file containing links to the output files is now created and uploaded to the s3 bucket.
+ - Added unit tests to the workflow.
 
 ## [0.1.1]
 
