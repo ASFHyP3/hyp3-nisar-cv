@@ -5,7 +5,7 @@ from osgeo import osr
 
 from nisar_cv import gcov
 
-EPSG = 32611  # UTM 11N
+EPSG = 32611
 LEFT, TOP = 500000.0, 4000000.0
 
 
@@ -37,7 +37,6 @@ def fake_gcov():
             g["xCoordinates"] = grid.x
             g["yCoordinates"] = grid.y
             g["projection"] = np.uint32(grid.epsg)
-            g["listOfCovarianceTerms"] = np.array([pol.encode() for pol in layers])
             for pol, layer in layers.items():
                 g[pol] = np.asarray(layer, np.float32)
             g["mask"] = np.ones(grid.shape, np.uint8) if mask is None else mask

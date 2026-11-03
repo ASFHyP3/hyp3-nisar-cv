@@ -9,6 +9,7 @@ from nisar_cv.process import CROP, NODATA, NON_CROP, WATER
 
 DATES = ["20260710", "20260722", "20260815", "20260827"]
 
+
 @pytest.fixture
 def fake_asf(in_tmp_path, monkeypatch, make_grid, fake_gcov):
     """Serve one synthetic GCOV per granule; returns the layers and grids by granule name."""
@@ -35,6 +36,7 @@ def fake_asf(in_tmp_path, monkeypatch, make_grid, fake_gcov):
         ],
     )
     return SimpleNamespace(stack=stack, add=add)
+
 
 def test_process_cv(fake_asf):
     names = [granule_name(d) for d in DATES]
@@ -69,6 +71,7 @@ def test_process_crop_area(fake_asf):
         "_CROP_100m.tif",
     ]
 
+
 def test_classify_crop():
     cv = np.array([[0.39, 0.4, 0.8, np.nan, np.nan]], np.float32)
     water = np.array([[0, 0, 1, 0, 1]], np.uint8)
@@ -76,6 +79,7 @@ def test_classify_crop():
     assert process.classify_crop(cv, water, 0.4).tolist() == [
         [NON_CROP, CROP, WATER, NODATA, WATER]
     ]
+
 
 def test_aggregate_float(make_grid):
     grid = make_grid(rows=5, cols=5)  # 20 m pixels: one 100 m block
@@ -88,12 +92,14 @@ def test_aggregate_float(make_grid):
     np.testing.assert_array_equal(out_grid.x, [500050.0])
     np.testing.assert_array_equal(out_grid.y, [3999950.0])
 
+
 def test_aggregate_crop(make_grid):
     a = np.full((5, 5), NODATA, np.uint8)
     a[0, :3] = CROP
     a[1, :2] = NON_CROP
     out, _ = process.aggregate(a, make_grid(5, 5), 100, nodata=NODATA)
     assert out[0, 0] == CROP
+
 
 def test_aggregate_water_nodata(make_grid):
     a = np.full((10, 5), NODATA, np.uint8)
