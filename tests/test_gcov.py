@@ -33,11 +33,16 @@ def test_read_gcov_layer_masks_invalid_and_fill(tmp_path, make_grid, fake_gcov):
     assert out_grid.same_as(grid)
 
 
-def test_read_gcov_layer_subset(tmp_path, make_grid, fake_gcov, lonlat_box):
+def test_read_gcov_layer_subset(tmp_path, make_grid, fake_gcov):
     grid = make_grid(100, 100)
     layer = np.arange(100 * 100, dtype=np.float32).reshape(100, 100)
     path = fake_gcov(tmp_path / "g.h5", grid, {"HHHH": layer})
-    wkt = lonlat_box(500405, 3999405, 500595, 3999595)  # columns 20-29, rows 20-29
-
+    # wkt = lonlat_box(500405, 3999405, 500595, 3999595)  # columns 20-29, rows 20-29
+    # print(wkt)
+    wkt = ("POLYGON((-116.99549843904795 36.13935365481583," +
+           "-116.993386595649 36.13935355682646," +
+           "-116.99338645188462 36.14106654605714," +
+           "-116.99549834119152 36.14106664405263," +
+           "-116.99549843904795 36.13935365481583))")
     out, _out_grid = gcov.read_gcov_layer(path, "HHHH", wkt)
     np.testing.assert_array_equal(out, layer[20:30, 20:30])

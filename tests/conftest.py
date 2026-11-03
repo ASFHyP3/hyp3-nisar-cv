@@ -44,33 +44,6 @@ def fake_gcov():
 
     return write
 
-
-@pytest.fixture
-def lonlat_box():
-    """WKT polygon in WGS84 covering a box given in projected coordinates."""
-
-    def box(minx, miny, maxx, maxy, epsg=EPSG):
-        src, dst = osr.SpatialReference(), osr.SpatialReference()
-        src.ImportFromEPSG(epsg)
-        dst.ImportFromEPSG(4326)
-        for srs in (src, dst):
-            srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        t = osr.CoordinateTransformation(src, dst)
-        corners = [
-            t.TransformPoint(x, y)[:2]
-            for x, y in [
-                (minx, miny),
-                (maxx, miny),
-                (maxx, maxy),
-                (minx, maxy),
-                (minx, miny),
-            ]
-        ]
-        return "POLYGON((" + ",".join(f"{lon} {lat}" for lon, lat in corners) + "))"
-
-    return box
-
-
 @pytest.fixture
 def in_tmp_path(tmp_path, monkeypatch):
     """Run in an empty directory: data/ and output/ are relative to the working directory."""
