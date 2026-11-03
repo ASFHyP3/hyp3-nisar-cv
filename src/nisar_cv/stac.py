@@ -41,7 +41,7 @@ def build_nisar_cv_asset(asset_path: Path, parent: str = ".") -> pystac.Asset:
         asset_type = get_content_type(asset_path)
 
     return pystac.Asset(
-        href=str(Path(parent) / asset_path.name),
+        href=f"{parent}/{asset_path.name}",
         roles=asset_roles,
         description=description,
         media_type=asset_type,
