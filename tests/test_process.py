@@ -1,9 +1,9 @@
+import shutil
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 from conftest import granule_name
-import shutil
 
 from nisar_cv import gcov, process
 from nisar_cv.process import CROP, NODATA, NON_CROP, WATER
@@ -13,9 +13,11 @@ DATES = ["20260710", "20260722", "20260815", "20260827"]
 
 existing = {}
 
+
 def setup_module():
     for d in (gcov.DATA_DIR, gcov.OUTPUT_DIR):
         existing[d] = set(d.iterdir()) if d.exists() else None
+
 
 @pytest.fixture
 def fake_asf(monkeypatch, make_grid, fake_gcov):
@@ -113,6 +115,7 @@ def test_aggregate_water_nodata(make_grid):
     a[:5] = WATER
     out, _ = process.aggregate(a, make_grid(10, 5), 100, nodata=NODATA)
     assert out[:, 0].tolist() == [WATER, NODATA]
+
 
 def teardown_module():
     for d, before in existing.items():
