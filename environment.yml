@@ -24,3 +24,4 @@ dependencies:
     #for linting and type checking
     - ruff==0.17.0
     - mypy==2.4.0
+    - pystac[validation]

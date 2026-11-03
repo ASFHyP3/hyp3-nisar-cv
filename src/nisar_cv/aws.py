@@ -1,4 +1,4 @@
-""" "Tools for working with AWS"""
+"""Tools for working with AWS"""
 
 import logging
 from mimetypes import guess_type
