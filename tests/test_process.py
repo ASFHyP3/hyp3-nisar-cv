@@ -69,3 +69,34 @@ def test_process_crop_area(fake_asf):
         "_CROP_100m.tif",
     ]
 
+def test_classify_crop():
+    cv = np.array([[0.39, 0.4, 0.8, np.nan, np.nan]], np.float32)
+    water = np.array([[0, 0, 1, 0, 1]], np.uint8)
+    # At the threshold is crop; water overrides crop and nodata
+    assert process.classify_crop(cv, water, 0.4).tolist() == [
+        [NON_CROP, CROP, WATER, NODATA, WATER]
+    ]
+
+def test_aggregate_float(make_grid):
+    grid = make_grid(rows=5, cols=5)  # 20 m pixels: one 100 m block
+    a = np.full((5, 5), 0.2, np.float32)
+    a[0, :] = 0.7
+    a[1, :] = np.nan
+    out, out_grid = process.aggregate(a, grid, 100, nodata=np.nan)
+    assert out.shape == (1, 1)
+    assert out[0, 0] == pytest.approx((5 * 0.7 + 15 * 0.2) / 20)
+    np.testing.assert_array_equal(out_grid.x, [500050.0])
+    np.testing.assert_array_equal(out_grid.y, [3999950.0])
+
+def test_aggregate_crop(make_grid):
+    a = np.full((5, 5), NODATA, np.uint8)
+    a[0, :3] = CROP
+    a[1, :2] = NON_CROP
+    out, _ = process.aggregate(a, make_grid(5, 5), 100, nodata=NODATA)
+    assert out[0, 0] == CROP
+
+def test_aggregate_water_nodata(make_grid):
+    a = np.full((10, 5), NODATA, np.uint8)
+    a[:5] = WATER
+    out, _ = process.aggregate(a, make_grid(10, 5), 100, nodata=NODATA)
+    assert out[:, 0].tolist() == [WATER, NODATA]
