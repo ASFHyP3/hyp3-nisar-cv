@@ -1,5 +1,6 @@
 import shutil
 from types import SimpleNamespace
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -11,7 +12,7 @@ from nisar_cv.process import CROP, NODATA, NON_CROP, WATER
 DATES = ["20260710", "20260722", "20260815", "20260827"]
 
 
-existing = {}
+existing: dict[Path,bool] = {}
 
 
 def setup_module():
