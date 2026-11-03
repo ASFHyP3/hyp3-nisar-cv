@@ -42,7 +42,7 @@ def test_read_gcov_layer_subset(tmp_path, make_grid, fake_gcov):
            "-116.993386595649 36.13935355682646," +
            "-116.99338645188462 36.14106654605714," +
            "-116.99549834119152 36.14106664405263," +
-           "-116.99549843904795 36.13935365481583))") #columns 20-39, row 20-29
+           "-116.99549843904795 36.13935365481583))") #columns 20-29, row 20-29
 
     out, _out_grid = gcov.read_gcov_layer(path, "HHHH", wkt)
     np.testing.assert_array_equal(out, layer[20:30, 20:30])

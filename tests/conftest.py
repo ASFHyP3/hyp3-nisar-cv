@@ -1,7 +1,6 @@
 import h5py
 import numpy as np
 import pytest
-from osgeo import osr
 
 from nisar_cv import gcov
 
@@ -43,9 +42,3 @@ def fake_gcov():
         return path
 
     return write
-
-@pytest.fixture
-def in_tmp_path(tmp_path, monkeypatch):
-    """Run in an empty directory: data/ and output/ are relative to the working directory."""
-    monkeypatch.chdir(tmp_path)
-    return tmp_path
