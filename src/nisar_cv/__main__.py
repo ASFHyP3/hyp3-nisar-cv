@@ -5,7 +5,14 @@ import argparse
 from nisar_cv import process
 from nisar_cv.aws import upload_file_to_s3
 from nisar_cv.stac import create_nisar_cv_stac_item
+import asf_search
+from datetime import datetime
+from typing import Literal
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 def string_is_true(s: str) -> bool:
     return s.lower() == "true"
@@ -16,17 +23,38 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
-        "granules",
-        type=str.split,
-        nargs="+",
-        help="Granules to process. Each argument to --granules should be one granule ID.",
+        "start_date",
+        type = str,
+        help = "Start date in YYYY-MM-DD format"
     )
+    parser.add_argument(
+        "end_date",
+        type = str,
+        help = "End date in YYYY-MM-DD format"
+    )
+
+    parser.add_argument(
+        "relative_orbit",
+        type = int,
+        help = "NISAR relative orbit number to search for"
+    )
+    parser.add_argument(
+        "orbit_direction",
+        type = str,
+        help = "NISAR orbit direction parameter. A = Ascending, D = Descending"
+    )
+    parser.add_argument(
+        "frame_number",
+        type = int,
+        help = "NISAR frame number to search for"
+    )
+
     parser.add_argument(
         "--pol",
         type=str,
         choices=["HHHH", "HVHV"],
         default="HHHH",
-        help="Polarization of input granules to use.",
+        help="Polarization of input granules to use."
     )
     parser.add_argument(
         "--subset",
@@ -76,10 +104,28 @@ def main() -> None:
         help="Save GCOV layers used in product generation, presented as geotiffs with subset applied",
     )
     args = parser.parse_args()
-    args.granules = [g for group in args.granules for g in group]
-
+    match args.orbit_direction:
+        case 'A':
+            orbit_direction = 'ASCENDING'
+        case 'D':
+            orbit_direction = 'DESCENDING'
+        case _:
+            raise ValueError("Invalid orbit direction")
+    start_date = datetime.strptime(args.start_date, "%Y-%m-%d")
+    end_date = datetime.strptime(args.end_date, "%Y-%m-%d")
+    search_results = asf_search.search(
+        platform = 'NISAR',
+        processingLevel = 'GCOV',
+        start = start_date,
+        end = end_date,
+        frame = args.frame_number,
+        relativeOrbit = args.relative_orbit,
+        flightDirection = orbit_direction
+    )
+    granules = [product.properties['sceneName'] for product in search_results if 'DHDH' in product.properties['sceneName']]
+    logger.info(f"processing granules: {granules}")
     result = process.process_cv(
-        args.granules,
+        granules,
         pol=args.pol,
         subset_wkt=args.subset,
         water_thresh_db=args.water_threshold_db,
@@ -91,7 +137,7 @@ def main() -> None:
         )
     result.outputs.append(
         create_nisar_cv_stac_item(
-            args.granules, result.outputs, args.bucket, args.bucket_prefix
+            granules, result.outputs, args.bucket, args.bucket_prefix
         )
     )
     if args.bucket:
