@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pystac
 from osgeo import gdal, osr
-
+from pystac.extensions.file import FileExtension as fileext
 from nisar_cv.aws import get_content_type
 from nisar_cv.gcov import acquisition_date, acquisition_frame
 
 
-def build_nisar_cv_asset(asset_path: Path, parent: str = ".") -> pystac.Asset:
+def build_nisar_cv_asset(asset_path: Path, bucket, prefix, parent: str = ".") -> pystac.Asset:
     """
     Build assets with more accurate descriptions based on NISAR-Cv scheme
     """
@@ -39,13 +39,25 @@ def build_nisar_cv_asset(asset_path: Path, parent: str = ".") -> pystac.Asset:
         asset_roles = ["data"]
         description = ""
         asset_type = get_content_type(asset_path)
-
-    return pystac.Asset(
-        href=f"{parent}/{asset_path.name}",
-        roles=asset_roles,
-        description=description,
-        media_type=asset_type,
+    file_size = asset_path.stat().st_size
+    asset = pystac.Asset(
+        href = f"{parent}/{asset_path.name}",
+        roles = asset_roles,
+        description = description,
+        media_type = asset_type,
+        extra_fields={
+            'alternate': {
+                's3': {
+                    'href': f's3://{bucket}/{prefix}/{asset_path.name}',
+                    'alternate:name': 'S3',
+                }
+            },
+            'file:size': file_size,
+        },
     )
+
+
+    return asset
 
 
 def get_bounding_box_union(geotiff_paths: list[Path]) -> list[float]:
@@ -90,7 +102,7 @@ def create_nisar_cv_stac_item(
     for product_path in product_paths:
         file_list.append(product_path.name)
         assets[product_path.stem] = build_nisar_cv_asset(
-            Path(product_path), parent=f"s3://{bucket}/{prefix}"
+            Path(product_path), bucket, prefix
         )
 
     bounding_box = get_bounding_box_union(product_paths)
@@ -105,6 +117,10 @@ def create_nisar_cv_stac_item(
     }
     stac_item = pystac.Item(
         id=stac_id,
+        stac_extensions = [
+            "https://stac-extensions.github.io/file/v2.1.0/schema.json",
+            "https://stac-extensions.github.io/alternate-assets/v1.2.0/schema.json"
+        ],
         geometry={
             "type": "Polygon",
             "coordinates": [
