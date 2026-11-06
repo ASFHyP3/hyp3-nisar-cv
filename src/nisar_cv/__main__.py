@@ -35,7 +35,7 @@ def main() -> None:
         help="NISAR orbit direction parameter. A = Ascending, D = Descending",
     )
     parser.add_argument(
-        "frame_number", type=int, help="NISAR frame number to search for"
+        "frame_number", type=int, help="NISAR frame number containing scene"
     )
 
     parser.add_argument(
