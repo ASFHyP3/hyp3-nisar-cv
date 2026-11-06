@@ -23,19 +23,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("start_date", type=str, help="Start date in YYYY-MM-DD format")
-    parser.add_argument("end_date", type=str, help="End date in YYYY-MM-DD format")
-
     parser.add_argument(
-        "relative_orbit", type=int, help="NISAR relative orbit number to search for"
+        "start_date", type=str, help="Start date of CV calculation in YYYY-MM-DD format"
     )
+    parser.add_argument(
+        "end_date", type=str, help="End date of CV calculation in YYYY-MM-DD format"
+    )
+    parser.add_argument("relative_orbit", type=int, help="NISAR relative orbit number.")
     parser.add_argument(
         "orbit_direction",
         type=str,
         help="NISAR orbit direction parameter. A = Ascending, D = Descending",
     )
     parser.add_argument(
-        "frame_number", type=int, help="NISAR frame number containing scene"
+        "frame_number", type=int, help="NISAR track frame number containing scene."
     )
 
     parser.add_argument(
@@ -100,6 +101,7 @@ def main() -> None:
             orbit_direction = "DESCENDING"
         case _:
             raise ValueError("Invalid orbit direction")
+
     start_date = datetime.strptime(args.start_date, "%Y-%m-%d")
     end_date = datetime.strptime(args.end_date, "%Y-%m-%d")
     search_results = asf_search.search(
