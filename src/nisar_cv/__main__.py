@@ -113,10 +113,7 @@ def main() -> None:
         relativeOrbit=args.relative_orbit,
         flightDirection=orbit_direction,
     )
-    granules = [
-        product.properties["sceneName"]
-        for product in search_results
-    ]
+    granules = [product.properties["sceneName"] for product in search_results]
     logger.info(f"processing granules: {granules}")
     result = process.process_cv(
         granules,
