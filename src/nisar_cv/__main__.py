@@ -38,7 +38,6 @@ def main() -> None:
     parser.add_argument(
         "--frame_number", type=int, help="NISAR track frame number containing scene."
     )
-    parser.add_argument()
     parser.add_argument(
         "--pol",
         type=str,
