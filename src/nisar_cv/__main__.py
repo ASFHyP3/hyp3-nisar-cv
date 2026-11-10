@@ -36,9 +36,9 @@ def main() -> None:
         help="NISAR orbit direction parameter. A = Ascending, D = Descending",
     )
     parser.add_argument(
-        "frame_number", type=int, help="NISAR track frame number containing scene."
+        "--frame_number", type=int, help="NISAR track frame number containing scene."
     )
-
+    parser.add_argument()
     parser.add_argument(
         "--pol",
         type=str,
@@ -116,7 +116,6 @@ def main() -> None:
     granules = [
         product.properties["sceneName"]
         for product in search_results
-        if "DHDH" in product.properties["sceneName"]
     ]
     logger.info(f"processing granules: {granules}")
     result = process.process_cv(
