@@ -18,6 +18,10 @@ logger.setLevel(logging.INFO)
 def string_is_true(s: str) -> bool:
     return s.lower() == "true"
 
+def string_null_to_empty(s: str) -> str:
+    if s.lower() == "null":
+        return ""
+    return s
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -103,6 +107,7 @@ def main() -> None:
 
     start_date = datetime.strptime(args.start_date, "%Y-%m-%d")
     end_date = datetime.strptime(args.end_date, "%Y-%m-%d")
+    subset = string_null_to_empty(args.subset)
     search_results = asf_search.search(
         platform="NISAR",
         processingLevel="GCOV",
@@ -117,7 +122,7 @@ def main() -> None:
     result = process.process_cv(
         granules,
         pol=args.pol,
-        subset_wkt=args.subset,
+        subset_wkt=subset,
         water_thresh_db=args.water_threshold_db,
         save_gcovs=args.save_gcovs,
     )
