@@ -2,7 +2,7 @@
 
 import argparse
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import asf_search
 
@@ -18,13 +18,12 @@ logger.setLevel(logging.INFO)
 def string_is_true(s: str) -> bool:
     return s.lower() == "true"
 
+
 def string_null_to_empty(s: str) -> str:
     if s.lower() == "null":
         return ""
     return s
 
-def validate_relative_orbit(orbit: int):
-    assert 0 < orbit <= 173, "Relative orbit value "
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -40,7 +39,7 @@ def main() -> None:
     parser.add_argument(
         "orbit_direction",
         type=str,
-        choices=["A","D"],
+        choices=["A", "D"],
         help="NISAR orbit direction parameter. A = Ascending, D = Descending",
     )
     parser.add_argument(
@@ -110,7 +109,7 @@ def main() -> None:
             raise ValueError("Invalid orbit direction")
 
     start_date = datetime.strptime(args.start_date, "%Y-%m-%d")
-    end_date = datetime.strptime(args.end_date, "%Y-%m-%d")
+    end_date = datetime.strptime(args.end_date, "%Y-%m-%d") + timedelta(days=1)
     subset = string_null_to_empty(args.subset)
     print(f"subset: {subset}")
     search_results = asf_search.search(
