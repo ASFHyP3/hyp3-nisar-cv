@@ -23,6 +23,9 @@ def string_null_to_empty(s: str) -> str:
         return ""
     return s
 
+def validate_relative_orbit(orbit: int):
+    assert 0 < orbit <= 173, "Relative orbit value "
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -37,6 +40,7 @@ def main() -> None:
     parser.add_argument(
         "orbit_direction",
         type=str,
+        choices=["A","D"],
         help="NISAR orbit direction parameter. A = Ascending, D = Descending",
     )
     parser.add_argument(
@@ -108,6 +112,7 @@ def main() -> None:
     start_date = datetime.strptime(args.start_date, "%Y-%m-%d")
     end_date = datetime.strptime(args.end_date, "%Y-%m-%d")
     subset = string_null_to_empty(args.subset)
+    print(f"subset: {subset}")
     search_results = asf_search.search(
         platform="NISAR",
         processingLevel="GCOV",
