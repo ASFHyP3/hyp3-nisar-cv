@@ -1,14 +1,28 @@
 """Coefficient of variation, and optionally crop area, from a stack of NISAR GCOV granules."""
 
 import argparse
+import logging
+from datetime import datetime, timedelta
+
+import asf_search
 
 from nisar_cv import process
 from nisar_cv.aws import upload_file_to_s3
 from nisar_cv.stac import create_nisar_cv_stac_item
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 
 def string_is_true(s: str) -> bool:
     return s.lower() == "true"
+
+
+def string_null_to_none(s: str) -> str | None:
+    if s.lower() == "null":
+        return None
+    return s
 
 
 def main() -> None:
@@ -16,10 +30,20 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
-        "granules",
-        type=str.split,
-        nargs="+",
-        help="Granules to process. Each argument to --granules should be one granule ID.",
+        "start_date", type=str, help="Start date of CV calculation in YYYY-MM-DD format"
+    )
+    parser.add_argument(
+        "end_date", type=str, help="End date of CV calculation in YYYY-MM-DD format"
+    )
+    parser.add_argument("relative_orbit", type=int, help="NISAR relative orbit number.")
+    parser.add_argument(
+        "orbit_direction",
+        type=str,
+        choices=["A", "D"],
+        help="NISAR orbit direction parameter. A = Ascending, D = Descending",
+    )
+    parser.add_argument(
+        "frame_number", type=int, help="NISAR track frame number containing scene."
     )
     parser.add_argument(
         "--pol",
@@ -30,7 +54,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--subset",
-        type=str,
+        type=string_null_to_none,
         default=None,
         help="Geographic subset of the granules to use, in the format of a WKT string.",
     )
@@ -76,10 +100,31 @@ def main() -> None:
         help="Save GCOV layers used in product generation, presented as geotiffs with subset applied",
     )
     args = parser.parse_args()
-    args.granules = [g for group in args.granules for g in group]
+    match args.orbit_direction:
+        case "A":
+            orbit_direction = "ASCENDING"
+        case "D":
+            orbit_direction = "DESCENDING"
+        case _:
+            raise ValueError("Invalid orbit direction")
 
+    start_date = datetime.strptime(args.start_date, "%Y-%m-%d")
+    end_date = datetime.strptime(args.end_date, "%Y-%m-%d") + timedelta(days=1)
+    search_results = asf_search.search(
+        platform="NISAR",
+        processingLevel="GCOV",
+        start=start_date,
+        end=end_date,
+        frame=args.frame_number,
+        relativeOrbit=args.relative_orbit,
+        flightDirection=orbit_direction,
+    )
+    granule_names = [product.properties["sceneName"] for product in search_results]
+    # search for only full frame granules
+    granules = [granule for granule in granule_names if granule.split("_")[-3] == "F"]
+    logger.info(f"processing granules: {granules}")
     result = process.process_cv(
-        args.granules,
+        granules,
         pol=args.pol,
         subset_wkt=args.subset,
         water_thresh_db=args.water_threshold_db,
@@ -91,7 +136,7 @@ def main() -> None:
         )
     result.outputs.append(
         create_nisar_cv_stac_item(
-            args.granules, result.outputs, args.bucket, args.bucket_prefix
+            granules, result.outputs, args.bucket, args.bucket_prefix
         )
     )
     if args.bucket:
