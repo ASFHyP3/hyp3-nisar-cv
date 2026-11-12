@@ -121,8 +121,8 @@ def main() -> None:
         relativeOrbit=args.relative_orbit,
         flightDirection=orbit_direction,
     )
-    granule_names =  [product.properties["sceneName"] for product in search_results]
-    #search for only full frame granules
+    granule_names = [product.properties["sceneName"] for product in search_results]
+    # search for only full frame granules
     granules = [granule for granule in granule_names if granule.split("_")[-3] == "F"]
 
     logger.info(f"processing granules: {granules}")
