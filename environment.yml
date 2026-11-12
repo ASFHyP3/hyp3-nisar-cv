@@ -19,6 +19,8 @@ dependencies:
   - matplotlib=3.11
   # for testing
   - pytest=9.1.1
+  - brotli>=1.2.1
+  - brotli-python>=1.2.1
   - pip:
     - -e .
     #for linting and type checking
