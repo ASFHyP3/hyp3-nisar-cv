@@ -19,9 +19,9 @@ def string_is_true(s: str) -> bool:
     return s.lower() == "true"
 
 
-def string_null_to_empty(s: str) -> str:
+def string_null_to_none(s: str) -> str | None:
     if s.lower() == "null":
-        return ""
+        return None
     return s
 
 
@@ -54,7 +54,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--subset",
-        type=str,
+        type=string_null_to_none,
         default=None,
         help="Geographic subset of the granules to use, in the format of a WKT string.",
     )
@@ -110,8 +110,6 @@ def main() -> None:
 
     start_date = datetime.strptime(args.start_date, "%Y-%m-%d")
     end_date = datetime.strptime(args.end_date, "%Y-%m-%d") + timedelta(days=1)
-    subset = string_null_to_empty(args.subset)
-    print(f"subset: {subset}")
     search_results = asf_search.search(
         platform="NISAR",
         processingLevel="GCOV",
@@ -124,12 +122,12 @@ def main() -> None:
     granule_names = [product.properties["sceneName"] for product in search_results]
     # search for only full frame granules
     granules = [granule for granule in granule_names if granule.split("_")[-3] == "F"]
-
+    print(args.subset)
     logger.info(f"processing granules: {granules}")
     result = process.process_cv(
         granules,
         pol=args.pol,
-        subset_wkt=subset,
+        subset_wkt=args.subset,
         water_thresh_db=args.water_threshold_db,
         save_gcovs=args.save_gcovs,
     )
