@@ -4,7 +4,7 @@ channels:
   - nodefaults
 dependencies:
   - python>=3.12
-  - pip=26.2
+  - pip>=26.2.2
   # For running
   - asf_search=14.0
   - gdal=3.13
@@ -17,8 +17,13 @@ dependencies:
   - setuptools_scm=10.3.4
   # For quick-look plots during development
   - matplotlib=3.11
+  # for testing
+  - pytest=9.1.1
+  - brotli>=1.2.1
+  - brotli-python>=1.2.1
   - pip:
     - -e .
     #for linting and type checking
     - ruff==0.17.0
     - mypy==2.4.0
+    - pystac[validation]

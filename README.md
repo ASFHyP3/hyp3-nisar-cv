@@ -12,16 +12,11 @@ mamba activate nisar-cv
 
 The HyP3-NISAR-CV plugin provides a workflow (accessible directly in Python or via a CLI) for creating coefficient of variation maps and crop area identification from a list of NISAR granules.
 
-Pass a list of granules from one track/frame, plus optional polarization, subset, and crop area
+Pass a start and end date, and NISAR relative orbit, orbit direction, and track frame number, plus optional polarization, subset, and crop area
 parameters:
-
 ```
-python src/nisar_cv \
-    NISAR_L2_PR_GCOV_023_148_A_024_2005_DHDH_M_20260624T105804_20260624T105843_P05023_N_F_J_001 \
-    NISAR_L2_PR_GCOV_024_148_A_024_2005_DHDH_M_20260706T105804_20260706T105842_P05023_N_F_J_001 \
-    NISAR_L2_PR_GCOV_025_148_A_024_2005_DHDH_M_20260718T105803_20260718T105841_P05023_N_F_J_001 \
-    NISAR_L2_PR_GCOV_027_148_A_024_2005_DHDH_M_20260811T105802_20260811T105840_P05023_N_F_J_001 \
-    --subset 'POLYGON((-91.2399 45.1589,-90.7532 45.1589,-90.7532 45.4609,-91.2399 45.4609,-91.2399 45.1589))'
+nisar_cv 2026-06-24 2026-08-12 148 A 024 --subset 'POLYGON((-91.2399 45.1589,-90.7532 45.1589,-90.7532 45.4609,-91.2399 
+45.4609,-91.2399 45.1589))' --bucket-prefix 'test-stac' --bucket 'nisar-bridge-demo-nisar-cv' --crop-area 'true'
 ```
 
 Additional parameters: `--pol` (default `HHHH`), and crop area parameters: `--crop-area` (default `False`),
