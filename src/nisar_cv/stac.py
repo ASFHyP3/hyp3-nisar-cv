@@ -108,9 +108,7 @@ def create_nisar_cv_stac_item(
     # find bounding box which includes all files
     for product_path in product_paths:
         file_list.append(product_path.name)
-        asset_name, asset = build_nisar_cv_asset(
-            Path(product_path), bucket, prefix
-        )
+        asset_name, asset = build_nisar_cv_asset(Path(product_path), bucket, prefix)
         assets[asset_name] = asset
 
     bounding_box = get_bounding_box_union(product_paths)
