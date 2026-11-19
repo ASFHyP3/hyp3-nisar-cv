@@ -58,15 +58,19 @@ def string_null_to_none(s: str) -> str | None:
         return None
     return s
 
+
 def date(date_str: str) -> datetime:
     return datetime.strptime(date_str, "%Y-%m-%d")
+
 
 def build_hyp3_nisar_cv_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
-        "start_date", type=date, help="Start date of CV calculation in YYYY-MM-DD format"
+        "start_date",
+        type=date,
+        help="Start date of CV calculation in YYYY-MM-DD format",
     )
     parser.add_argument(
         "end_date", type=date, help="End date of CV calculation in YYYY-MM-DD format"
@@ -75,9 +79,9 @@ def build_hyp3_nisar_cv_parser() -> argparse.ArgumentParser:
         "stack_id",
         type=stack_id,
         help="NISAR stack id, in format REL_P_FRM, where\n"
-             f"-REL represents relative orbit number, from {RELATIVE_ORBIT_MIN}-{RELATIVE_ORBIT_MAX}\n"
-             "-P represents orbit direction, A or D for Ascending or Descending\n"
-             f"-FRM is the frame number, from {FRAME_NUMBER_MIN}-{FRAME_NUMBER_MAX}",
+        f"-REL represents relative orbit number, from {RELATIVE_ORBIT_MIN}-{RELATIVE_ORBIT_MAX}\n"
+        "-P represents orbit direction, A or D for Ascending or Descending\n"
+        f"-FRM is the frame number, from {FRAME_NUMBER_MIN}-{FRAME_NUMBER_MAX}",
     )
     parser.add_argument(
         "--pol",
@@ -123,7 +127,7 @@ def build_hyp3_nisar_cv_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--bucket-prefix",
-        default = 'default',
+        default="default",
         type=str,
         help="Add a bucket prefix to product(s)",
     )
