@@ -6,7 +6,9 @@ from datetime import datetime
 from pathlib import Path
 
 import asf_search as asf
-import h5py
+import xarray as xr
+import aiohttp
+import fsspec
 import numpy as np
 from numpy import typing as npt
 from osgeo import gdal, gdal_array, ogr, osr
@@ -14,10 +16,12 @@ from osgeo import gdal, gdal_array, ogr, osr
 DATA_DIR = Path("data")
 OUTPUT_DIR = Path("output")
 
+GCOV_PROJECTION_VARIABLE = "projection"
+GCOV_MASK_VARIABLE = "mask"
 GCOV_GRID_PATH = "science/LSAR/GCOV/grids/frequencyA"
 GCOV_MASK_FILL = 255  # mask: 0 = partially focused or invalid (incl. transmit gaps), 255 = outside acquisition
 EARTHDATA_HOST = "urs.earthdata.nasa.gov"
-
+BLOCK_SIZE = 64 * 1024 * 1024  # 64 MB
 
 @dataclass(frozen=True)
 class Grid:
@@ -57,13 +61,16 @@ class Grid:
             and np.array_equal(self.y, other.y)
         )
 
-
-def earthdata_session() -> asf.ASFSession:
-    """ASF session authenticated with the Earthdata Login credentials in ~/.netrc."""
+def earthdata_credentials() -> tuple[str,str]:
     credentials = netrc.netrc().authenticators(EARTHDATA_HOST)
     if credentials is None:
         raise ValueError(f"No {EARTHDATA_HOST} entry in ~/.netrc")
     username, _, password = credentials
+    return username, password
+
+def earthdata_session() -> asf.ASFSession:
+    """ASF session authenticated with the Earthdata Login credentials in ~/.netrc."""
+    username, password = earthdata_credentials()
     return asf.ASFSession().auth_with_creds(username, password)
 
 
@@ -78,6 +85,61 @@ def download_granule(product: asf.ASFProduct, session: asf.ASFSession) -> Path:
     print(f"finished download: {granule}")
     return path / f"{granule}.h5"
 
+def stream_granule(product: asf.ASFProduct) -> xr.DataTree:
+    access_url = product.get_urls()[0]
+    username, password = earthdata_credentials()
+    fs = fsspec.filesystem(
+        protocol='https',
+        client_kwargs={'auth': aiohttp.BasicAuth(username, password)},
+    )
+    datatree = xr.open_datatree(
+        fs.open(
+            path=access_url,
+            cache_type='background',
+            block_size= BLOCK_SIZE,
+        ),
+        engine='h5netcdf',
+        decode_timedelta=False,
+        phony_dims='access',
+    )
+    return datatree
+
+def stream_gcov_layer(
+    product: asf.ASFProduct, pol: str = "HHHH", subset_wkt: str | None = None
+) -> tuple[npt.NDArray[np.floating], Grid]:
+    """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry.
+    Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
+    acquisition are set to NaN."""
+    datatree = stream_granule(product)
+    gcov_mask, gcov_grid, epsg = read_datatree_gcov_layer(datatree,pol)
+    layer_x = gcov_grid.coords["xCoordinates"].to_numpy()
+    layer_y = gcov_grid.coords["yCoordinates"].to_numpy()
+    mask_x = gcov_mask.coords["xCoordinates"].to_numpy()
+    mask_y = gcov_mask.coords["yCoordinates"].to_numpy()
+    layer_rows, layer_cols = slice(None), slice(None)
+    mask_rows, mask_cols = slice(None), slice(None)
+    if subset_wkt:
+        layer_rows, layer_cols = subset_window(subset_wkt, layer_x, layer_y, epsg)
+        mask_rows, mask_cols = subset_window(subset_wkt, mask_x, mask_y, epsg)
+    print(f"loading layer")
+    layer = gcov_grid.isel(xCoordinates=layer_cols, yCoordinates=layer_rows).values
+    print(f"loading layer complete")
+    print(f"loading  mask")
+    mask = gcov_mask.isel(xCoordinates=mask_cols, yCoordinates=mask_rows).values
+    print(f"loading  mask complete")
+    valid = (mask > 0) & (mask != GCOV_MASK_FILL)
+    layer = np.where(valid, layer, np.nan).astype(np.float32)
+    return layer, Grid(epsg, layer_x[layer_cols], layer_y[layer_rows])
+
+def read_datatree_gcov_layer(datatree, pol) -> tuple[xr.DataArray, xr.DataArray, int]:
+    gcov_tree = datatree[GCOV_GRID_PATH]
+    projection = datatree[GCOV_GRID_PATH].get(GCOV_PROJECTION_VARIABLE)
+    assert pol in gcov_tree.data_vars, f"covariance layer {pol} not in granule. Available layers: {gcov_tree.data_vars}"
+    gcov_layer = gcov_tree.get(pol)
+    mask = gcov_tree.get(GCOV_MASK_VARIABLE)
+    print(gcov_layer.encoding)
+    print(mask.encoding)
+    return mask, gcov_layer, int(projection.epsg_code)
 
 def remove_granule(granule: str) -> None:
     path = DATA_DIR / f"{granule}.h5"
@@ -172,7 +234,6 @@ def write_geotiff(
     """Write a single-band Cloud Optimized GeoTIFF to OUTPUT_DIR."""
     OUTPUT_DIR.mkdir(exist_ok=True)
     path = OUTPUT_DIR / filename
-
     gdal_type = gdal_array.NumericTypeCodeToGDALTypeCode(array.dtype)
     ds = gdal.GetDriverByName("COG").Create(
         str(path), grid.shape[1], grid.shape[0], 1, gdal_type

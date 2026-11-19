@@ -150,8 +150,8 @@ def process_cv(
     grid = None
     for i, product in enumerate(products, start=1):
         granule = product.properties["sceneName"]
-        h5_path = gcov.download_granule(product, session)
-        layer, layer_grid = gcov.read_gcov_layer(h5_path, pol, subset_wkt)
+        #h5_path = gcov.download_granule(product, session)
+        layer, layer_grid = gcov.stream_gcov_layer(product, pol, subset_wkt)
 
         if stats is None:
             stats = WelfordCV(np.asarray(layer.shape).astype(np.int64), water_thresh_db)

@@ -9,7 +9,7 @@ import asf_search
 from nisar_cv import process
 from nisar_cv.aws import upload_file_to_s3
 from nisar_cv.stac import create_nisar_cv_stac_item
-
+from nisar_cv.gcov import stream_granule, read_datatree_gcov_layer
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
