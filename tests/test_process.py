@@ -31,8 +31,8 @@ def test_process_cv(fake_asf):
 
     result = process.process_cv(names)
 
-    layers = np.stack([fake_asf.stack[n][0] for n in names])
-    np.testing.assert_allclose(result.cv, layers.std(0) / layers.mean(0), rtol=1e-5)
+    layers = np.stack([fake_asf.stack[n][gcov.GCOV_GRID_PATH]["HHHH"].values for n in names])
+    np.testing.assert_allclose(result.cv, layers.std(axis=0) / layers.mean(axis=0), rtol=1e-5)
 
     assert [p.name for p in result.outputs] == [
         f"{result.name}_CV.tif",
