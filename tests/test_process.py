@@ -27,7 +27,7 @@ def setup_module():
 def test_process_cv(fake_asf):
     names = [granule_name(d) for d in DATES]
     for n in names:
-        fake_asf.add(n)
+        fake_asf.add(Path(n))
 
     result = process.process_cv(names)
 
@@ -46,7 +46,7 @@ def test_process_cv(fake_asf):
 def test_process_crop_area(fake_asf):
     names = [granule_name(d) for d in DATES]
     for n in names:
-        fake_asf.add(n)
+        fake_asf.add(Path(n))
 
     result = process.process_crop_area(process.process_cv(names))
     assert [p.name.removeprefix(result.name) for p in result.outputs] == [

@@ -8,9 +8,15 @@ import asf_search as asf
 from asf_search import ASFProduct
 from nisar_cv import gcov
 import xarray as xr
+from pathlib import Path
 EPSG = 32611
 LEFT, TOP = 500000.0, 4000000.0
 
+def fake_product(path: Path):
+    product = SimpleNamespace(
+            properties={"sceneName": path.stem},
+            get_urls=[path])
+    return product
 
 def granule_name(date: str, track: str = "034", frame: str = "020") -> str:
     """A 91-character GCOV granule name acquired on date (YYYYMMDD)."""
@@ -50,19 +56,24 @@ def fake_gcov():
         root_tree[gcov.GCOV_GRID_PATH] = xr.DataTree(dataset=data_set)
         root_tree[gcov.GCOV_GRID_PATH][gcov.GCOV_PROJECTION_VARIABLE] = projection
         root_tree.to_netcdf(path, engine = "h5netcdf")
-        return path
+        product = fake_product(path)
+        return product
 
     return write
 
 @pytest.fixture
-def fake_asf(monkeypatch, make_grid, fake_gcov):
+def fake_asf(monkeypatch, make_grid, fake_gcov, tmp_path):
     """Serve one synthetic GCOV per granule; returns the layers and grids by granule name."""
     rng = np.random.default_rng(0)
     stack = {}
 
-    def add(name, grid=None):
-        grid = grid or make_grid(10, 10)
-        stack[name] = (rng.uniform(0.05, 0.5, grid.shape).astype(np.float32), grid)
+    def add(path, product = None):
+        name = path.stem
+        if product is None:
+            grid = make_grid(10, 10)
+            layer = rng.uniform(0.05, 0.5, grid.shape).astype(np.float32)
+            product = fake_gcov(gcov.DATA_DIR / f"{name}.h5", grid, {"HHHH": layer})
+        stack[name] = stream(product)
 
     def download(product, session):
         name = product.properties["sceneName"]
@@ -71,10 +82,8 @@ def fake_asf(monkeypatch, make_grid, fake_gcov):
         return fake_gcov(gcov.DATA_DIR / f"{name}.h5", grid, {"HHHH": layer})
 
     def stream(product: ASFProduct):
-        name = product.properties["sceneName"]
         gcov.DATA_DIR.mkdir(exist_ok=True)
-        layer, grid = stack[name]
-        path = fake_gcov(gcov.DATA_DIR / f"{name}.h5", grid, {"HHHH": layer})
+        path = product.get_urls[0]
         datatree = xr.open_datatree( path,
             engine='h5netcdf',
             decode_timedelta=False,
@@ -92,8 +101,3 @@ def fake_asf(monkeypatch, make_grid, fake_gcov):
     )
     return SimpleNamespace(stack=stack, add=add)
 
-def fake_product(path):
-    prodcut = SimpleNamespace(
-            properties={"sceneName": path.name},
-            get_urls=[path])
-    return prodcut

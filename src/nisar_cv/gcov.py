@@ -130,6 +130,8 @@ def stream_gcov_layer(
     mask = mask.isel(xCoordinates=cols, yCoordinates=rows).values
     print("loading  mask complete")
     valid = (mask > 0) & (mask != GCOV_MASK_FILL)
+    print(mask)
+    print(valid)
     layer = np.where(valid, layer, np.nan).astype(np.float32)
     return layer, Grid(epsg, x[cols], y[rows])
 
