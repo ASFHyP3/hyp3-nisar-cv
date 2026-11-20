@@ -1,9 +1,13 @@
+
 import h5py
 import numpy as np
 import pytest
-
+from h5netcdf import dimensions
+from types import SimpleNamespace
+import asf_search as asf
+from asf_search import ASFProduct
 from nisar_cv import gcov
-
+import xarray as xr
 EPSG = 32611
 LEFT, TOP = 500000.0, 4000000.0
 
@@ -29,16 +33,67 @@ def make_grid():
 @pytest.fixture
 def fake_gcov():
     """Write a minimal GCOV HDF5 file with the datasets read_gcov_layer uses."""
-
     def write(path, grid, layers, mask=None):
-        with h5py.File(path, "w") as f:
-            g = f.create_group(gcov.GCOV_GRID_PATH)
-            g["xCoordinates"] = grid.x
-            g["yCoordinates"] = grid.y
-            g["projection"] = np.uint32(grid.epsg)
-            for pol, layer in layers.items():
-                g[pol] = np.asarray(layer, np.float32)
-            g["mask"] = np.ones(grid.shape, np.uint8) if mask is None else mask
+        projection = xr.DataArray(data = grid.epsg)
+        data_set = xr.Dataset(
+            coords={'yCoordinates': grid.y, 'xCoordinates': grid.x})
+        for pol, layer in layers.items():
+            pol_array = xr.DataArray(data=np.asarray(layer, np.float32), coords={'yCoordinates': grid.y, 'xCoordinates': grid.x})
+            data_set[pol] = pol_array
+        if mask is not None:
+            print(f"Writing mask: {mask}")
+            mask_array = xr.DataArray(mask.astype(np.uint8), coords={'yCoordinates': grid.y, 'xCoordinates': grid.x})
+        else:
+            mask_array = xr.DataArray(np.ones(grid.shape, dtype=np.uint8), coords={'yCoordinates': grid.y, 'xCoordinates': grid.x})
+        data_set[gcov.GCOV_MASK_VARIABLE] = mask_array
+        root_tree = xr.DataTree()
+        root_tree[gcov.GCOV_GRID_PATH] = xr.DataTree(dataset=data_set)
+        root_tree[gcov.GCOV_GRID_PATH][gcov.GCOV_PROJECTION_VARIABLE] = projection
+        root_tree.to_netcdf(path, engine = "h5netcdf")
         return path
 
     return write
+
+@pytest.fixture
+def fake_asf(monkeypatch, make_grid, fake_gcov):
+    """Serve one synthetic GCOV per granule; returns the layers and grids by granule name."""
+    rng = np.random.default_rng(0)
+    stack = {}
+
+    def add(name, grid=None):
+        grid = grid or make_grid(10, 10)
+        stack[name] = (rng.uniform(0.05, 0.5, grid.shape).astype(np.float32), grid)
+
+    def download(product, session):
+        name = product.properties["sceneName"]
+        gcov.DATA_DIR.mkdir(exist_ok=True)
+        layer, grid = stack[name]
+        return fake_gcov(gcov.DATA_DIR / f"{name}.h5", grid, {"HHHH": layer})
+
+    def stream(product: ASFProduct):
+        name = product.properties["sceneName"]
+        gcov.DATA_DIR.mkdir(exist_ok=True)
+        layer, grid = stack[name]
+        path = fake_gcov(gcov.DATA_DIR / f"{name}.h5", grid, {"HHHH": layer})
+        datatree = xr.open_datatree( path,
+            engine='h5netcdf',
+            decode_timedelta=False,
+            phony_dims='access',
+        )
+        return datatree
+
+    monkeypatch.setattr(gcov, "earthdata_session", lambda: None)
+    monkeypatch.setattr(gcov, "stream_granule", stream)
+    monkeypatch.setattr(gcov, "download_granule", download)
+    monkeypatch.setattr(
+        asf,
+  "granule_search",
+        lambda names: [fake_product(gcov.DATA_DIR / f"{n}.h5") for n in names if n in stack],
+    )
+    return SimpleNamespace(stack=stack, add=add)
+
+def fake_product(path):
+    prodcut = SimpleNamespace(
+            properties={"sceneName": path.name},
+            get_urls=[path])
+    return prodcut

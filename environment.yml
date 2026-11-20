@@ -23,6 +23,7 @@ dependencies:
   - pytest=9.1.1
   - brotli>=1.2.1
   - brotli-python>=1.2.1
+  - h5py
   - pip:
     - -e .
     - aiohttp==3.14

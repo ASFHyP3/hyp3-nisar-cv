@@ -1,6 +1,6 @@
 import numpy as np
-from conftest import granule_name
-
+from conftest import granule_name, fake_asf, fake_product
+import asf_search as asf
 from nisar_cv import gcov
 
 
@@ -21,23 +21,23 @@ def test_product_name_uses_date_span_not_input_order():
     )
 
 
-def test_read_gcov_layer_masks_invalid_and_fill(tmp_path, make_grid, fake_gcov):
+def test_stream_gcov_layer_masks_invalid_and_fill(monkeypatch, tmp_path, make_grid, fake_gcov, fake_asf):
     grid = make_grid(2, 3)
     mask = np.array([[1, 2, 0], [255, 1, 1]], np.uint8)
     layer = np.full(grid.shape, 0.1)
     path = fake_gcov(tmp_path / "g.h5", grid, {"HHHH": layer, "HVHV": layer}, mask)
-
-    out, out_grid = gcov.read_gcov_layer(path, "HHHH")
+    product = fake_product(path)
+    out, out_grid = gcov.stream_gcov_layer(product, "HHHH")
     assert out.dtype == np.float32
     assert np.isnan(out).tolist() == [[False, False, True], [True, False, False]]
     assert out_grid.same_as(grid)
 
 
-def test_read_gcov_layer_subset(tmp_path, make_grid, fake_gcov):
+def test_stream_gcov_layer_subset(monkeypatch, tmp_path, make_grid, fake_gcov, fake_asf):
     grid = make_grid(100, 100)
     layer = np.arange(100 * 100, dtype=np.float32).reshape(100, 100)
     path = fake_gcov(tmp_path / "g.h5", grid, {"HHHH": layer})
-
+    product = fake_product(path)
     wkt = (
         "POLYGON((-116.99549843904795 36.13935365481583,"
         + "-116.993386595649 36.13935355682646,"
@@ -46,5 +46,5 @@ def test_read_gcov_layer_subset(tmp_path, make_grid, fake_gcov):
         + "-116.99549843904795 36.13935365481583))"
     )  # columns 20-29, row 20-29
 
-    out, _out_grid = gcov.read_gcov_layer(path, "HHHH", wkt)
+    out, _out_grid = gcov.stream_gcov_layer(product, "HHHH", wkt)
     np.testing.assert_array_equal(out, layer[20:30, 20:30])

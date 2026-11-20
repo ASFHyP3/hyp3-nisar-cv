@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-import asf_search as asf
-import xarray as xr
 import aiohttp
+import asf_search as asf
 import fsspec
+import h5py
 import numpy as np
+import xarray as xr
 from numpy import typing as npt
 from osgeo import gdal, gdal_array, ogr, osr
 
@@ -111,35 +112,26 @@ def stream_gcov_layer(
     Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
     acquisition are set to NaN."""
     datatree = stream_granule(product)
-    gcov_mask, gcov_grid, epsg = read_datatree_gcov_layer(datatree,pol)
-    layer_x = gcov_grid.coords["xCoordinates"].to_numpy()
-    layer_y = gcov_grid.coords["yCoordinates"].to_numpy()
-    mask_x = gcov_mask.coords["xCoordinates"].to_numpy()
-    mask_y = gcov_mask.coords["yCoordinates"].to_numpy()
-    layer_rows, layer_cols = slice(None), slice(None)
-    mask_rows, mask_cols = slice(None), slice(None)
+    gcov_tree = datatree[GCOV_GRID_PATH]
+    x = gcov_tree.coords["xCoordinates"].to_numpy()
+    y = gcov_tree.coords["yCoordinates"].to_numpy()
+    epsg = int(datatree[GCOV_GRID_PATH].get(GCOV_PROJECTION_VARIABLE).values)
+    print(f"epsg: {epsg}")
+    assert pol in gcov_tree.data_vars, f"covariance layer {pol} not in granule. Available layers: {gcov_tree.data_vars}"
+    layer = gcov_tree.get(pol)
+    mask = gcov_tree.get(GCOV_MASK_VARIABLE)
+    rows, cols = slice(None), slice(None)
     if subset_wkt:
-        layer_rows, layer_cols = subset_window(subset_wkt, layer_x, layer_y, epsg)
-        mask_rows, mask_cols = subset_window(subset_wkt, mask_x, mask_y, epsg)
-    print(f"loading layer")
-    layer = gcov_grid.isel(xCoordinates=layer_cols, yCoordinates=layer_rows).values
-    print(f"loading layer complete")
-    print(f"loading  mask")
-    mask = gcov_mask.isel(xCoordinates=mask_cols, yCoordinates=mask_rows).values
-    print(f"loading  mask complete")
+        rows, cols = subset_window(subset_wkt, x, y, epsg)
+    print("loading layer")
+    layer = layer.isel(xCoordinates=cols, yCoordinates=rows).values
+    print("loading layer complete")
+    print("loading  mask")
+    mask = mask.isel(xCoordinates=cols, yCoordinates=rows).values
+    print("loading  mask complete")
     valid = (mask > 0) & (mask != GCOV_MASK_FILL)
     layer = np.where(valid, layer, np.nan).astype(np.float32)
-    return layer, Grid(epsg, layer_x[layer_cols], layer_y[layer_rows])
-
-def read_datatree_gcov_layer(datatree, pol) -> tuple[xr.DataArray, xr.DataArray, int]:
-    gcov_tree = datatree[GCOV_GRID_PATH]
-    projection = datatree[GCOV_GRID_PATH].get(GCOV_PROJECTION_VARIABLE)
-    assert pol in gcov_tree.data_vars, f"covariance layer {pol} not in granule. Available layers: {gcov_tree.data_vars}"
-    gcov_layer = gcov_tree.get(pol)
-    mask = gcov_tree.get(GCOV_MASK_VARIABLE)
-    print(gcov_layer.encoding)
-    print(mask.encoding)
-    return mask, gcov_layer, int(projection.epsg_code)
+    return layer, Grid(epsg, x[cols], y[rows])
 
 def remove_granule(granule: str) -> None:
     path = DATA_DIR / f"{granule}.h5"
@@ -180,12 +172,12 @@ def subset_window(
 
     return slice(rows[0], rows[-1] + 1), slice(cols[0], cols[-1] + 1)
 
-
+'''
 def read_gcov_layer(
     h5_path: Path, pol: str = "HHHH", subset_wkt: str | None = None
 ) -> tuple[npt.NDArray[np.floating], Grid]:
     """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry.
-    Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
+   Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
     acquisition are set to NaN."""
     with h5py.File(h5_path, "r") as f:
         grids = f[GCOV_GRID_PATH]
@@ -209,7 +201,7 @@ def read_gcov_layer(
     valid = (mask > 0) & (mask != GCOV_MASK_FILL)
     layer = np.where(valid, layer, np.nan).astype(np.float32)
     return layer, Grid(epsg, x[cols], y[rows])
-
+'''
 
 def acquisition_date(granule: str) -> datetime:
     acquisition_datetime = datetime.strptime(granule.split("_")[11], "%Y%m%dT%H%M%S")
