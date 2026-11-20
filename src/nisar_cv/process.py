@@ -142,15 +142,12 @@ def process_cv(
     """
 
     names = list(granules)
-    session = gcov.earthdata_session()
     products = asf.granule_search(granules)
-    # print(products)
 
     stats = None
     grid = None
     for i, product in enumerate(products, start=1):
         granule = product.properties["sceneName"]
-        #h5_path = gcov.download_granule(product, session)
         layer, layer_grid = gcov.stream_gcov_layer(product, pol, subset_wkt)
 
         if stats is None:

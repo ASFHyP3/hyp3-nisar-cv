@@ -8,7 +8,6 @@ from pathlib import Path
 import aiohttp
 import asf_search as asf
 import fsspec
-import h5py
 import numpy as np
 import xarray as xr
 from numpy import typing as npt
@@ -23,6 +22,7 @@ GCOV_GRID_PATH = "science/LSAR/GCOV/grids/frequencyA"
 GCOV_MASK_FILL = 255  # mask: 0 = partially focused or invalid (incl. transmit gaps), 255 = outside acquisition
 EARTHDATA_HOST = "urs.earthdata.nasa.gov"
 BLOCK_SIZE = 64 * 1024 * 1024  # 64 MB
+
 
 @dataclass(frozen=True)
 class Grid:
@@ -62,12 +62,14 @@ class Grid:
             and np.array_equal(self.y, other.y)
         )
 
-def earthdata_credentials() -> tuple[str,str]:
+
+def earthdata_credentials() -> tuple[str, str]:
     credentials = netrc.netrc().authenticators(EARTHDATA_HOST)
     if credentials is None:
         raise ValueError(f"No {EARTHDATA_HOST} entry in ~/.netrc")
     username, _, password = credentials
     return username, password
+
 
 def earthdata_session() -> asf.ASFSession:
     """ASF session authenticated with the Earthdata Login credentials in ~/.netrc."""
@@ -86,24 +88,26 @@ def download_granule(product: asf.ASFProduct, session: asf.ASFSession) -> Path:
     print(f"finished download: {granule}")
     return path / f"{granule}.h5"
 
+
 def stream_granule(product: asf.ASFProduct) -> xr.DataTree:
     access_url = product.get_urls()[0]
     username, password = earthdata_credentials()
     fs = fsspec.filesystem(
-        protocol='https',
-        client_kwargs={'auth': aiohttp.BasicAuth(username, password)},
+        protocol="https",
+        client_kwargs={"auth": aiohttp.BasicAuth(username, password)},
     )
     datatree = xr.open_datatree(
         fs.open(
             path=access_url,
-            cache_type='background',
-            block_size= BLOCK_SIZE,
+            cache_type="background",
+            block_size=BLOCK_SIZE,
         ),
-        engine='h5netcdf',
+        engine="h5netcdf",
         decode_timedelta=False,
-        phony_dims='access',
+        phony_dims="access",
     )
     return datatree
+
 
 def stream_gcov_layer(
     product: asf.ASFProduct, pol: str = "HHHH", subset_wkt: str | None = None
@@ -115,25 +119,27 @@ def stream_gcov_layer(
     gcov_tree = datatree[GCOV_GRID_PATH]
     x = gcov_tree.coords["xCoordinates"].to_numpy()
     y = gcov_tree.coords["yCoordinates"].to_numpy()
-    epsg = int(datatree[GCOV_GRID_PATH].get(GCOV_PROJECTION_VARIABLE).values)
-    print(f"epsg: {epsg}")
-    assert pol in gcov_tree.data_vars, f"covariance layer {pol} not in granule. Available layers: {gcov_tree.data_vars}"
-    layer = gcov_tree.get(pol)
-    mask = gcov_tree.get(GCOV_MASK_VARIABLE)
+    epsg = datatree[GCOV_GRID_PATH][GCOV_PROJECTION_VARIABLE].item()
+    assert pol in gcov_tree.data_vars, (
+        f"covariance layer {pol} not in granule. Available layers: {gcov_tree.data_vars}"
+    )
+    layer_data_array = gcov_tree.get(pol)
+    assert layer_data_array is not None, f"Layer {pol} was not found"
+    mask_data_array = gcov_tree.get(GCOV_MASK_VARIABLE)
+    assert mask_data_array is not None, "Mask was not found"
     rows, cols = slice(None), slice(None)
     if subset_wkt:
         rows, cols = subset_window(subset_wkt, x, y, epsg)
     print("loading layer")
-    layer = layer.isel(xCoordinates=cols, yCoordinates=rows).values
+    layer = layer_data_array.isel(xCoordinates=cols, yCoordinates=rows).to_numpy()
     print("loading layer complete")
     print("loading  mask")
-    mask = mask.isel(xCoordinates=cols, yCoordinates=rows).values
+    mask = mask_data_array.isel(xCoordinates=cols, yCoordinates=rows).to_numpy()
     print("loading  mask complete")
     valid = (mask > 0) & (mask != GCOV_MASK_FILL)
-    print(mask)
-    print(valid)
     layer = np.where(valid, layer, np.nan).astype(np.float32)
     return layer, Grid(epsg, x[cols], y[rows])
+
 
 def remove_granule(granule: str) -> None:
     path = DATA_DIR / f"{granule}.h5"
@@ -174,6 +180,7 @@ def subset_window(
 
     return slice(rows[0], rows[-1] + 1), slice(cols[0], cols[-1] + 1)
 
+
 '''
 def read_gcov_layer(
     h5_path: Path, pol: str = "HHHH", subset_wkt: str | None = None
@@ -204,6 +211,7 @@ def read_gcov_layer(
     layer = np.where(valid, layer, np.nan).astype(np.float32)
     return layer, Grid(epsg, x[cols], y[rows])
 '''
+
 
 def acquisition_date(granule: str) -> datetime:
     acquisition_datetime = datetime.strptime(granule.split("_")[11], "%Y%m%dT%H%M%S")

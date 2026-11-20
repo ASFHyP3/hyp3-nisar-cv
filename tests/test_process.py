@@ -1,13 +1,8 @@
 import shutil
 from pathlib import Path
-from types import SimpleNamespace
 
 import numpy as np
 import pytest
-import xarray as xr
-from asf_search import ASFProduct
-import asf_search as asf
-
 from conftest import granule_name
 
 from nisar_cv import gcov, process
@@ -31,8 +26,12 @@ def test_process_cv(fake_asf):
 
     result = process.process_cv(names)
 
-    layers = np.stack([fake_asf.stack[n][gcov.GCOV_GRID_PATH]["HHHH"].values for n in names])
-    np.testing.assert_allclose(result.cv, layers.std(axis=0) / layers.mean(axis=0), rtol=1e-5)
+    layers = np.stack(
+        [fake_asf.stack[n][gcov.GCOV_GRID_PATH]["HHHH"].values for n in names]
+    )
+    np.testing.assert_allclose(
+        result.cv, layers.std(axis=0) / layers.mean(axis=0), rtol=1e-5
+    )
 
     assert [p.name for p in result.outputs] == [
         f"{result.name}_CV.tif",
