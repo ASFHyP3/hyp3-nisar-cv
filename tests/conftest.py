@@ -6,17 +6,26 @@ import numpy as np
 import pytest
 import xarray as xr
 from asf_search import ASFProduct
-
 from nisar_cv import gcov
+import fsspec
 
 EPSG = 32611
 LEFT, TOP = 500000.0, 4000000.0
 
+@pytest.fixture()
+def build_fake_filesystem(monkeypatch):
+    def fake_fs():
+        return fsspec.filesystem(protocol = "file")
+    monkeypatch.setattr("nisar_cv.process.build_filesystem", fake_fs)
+    return fake_fs
 
-def fake_product(path: Path):
-    product = SimpleNamespace(properties={"sceneName": path.stem}, get_urls=[path])
-    return product
+class fakeProduct():
+    def __init__(self, path: Path):
+        self.properties = {"sceneName": path.stem}
+        self.urls = [path]
 
+    def get_urls(self):
+        return self.urls
 
 def granule_name(date: str, track: str = "034", frame: str = "020") -> str:
     """A 91-character GCOV granule name acquired on date (YYYYMMDD)."""
@@ -67,7 +76,7 @@ def fake_gcov():
         if path.exists():
             os.remove(path)
         root_tree.to_netcdf(path, engine="h5netcdf")
-        product = fake_product(path)
+        product = fakeProduct(path)
         return product
 
     return write
@@ -89,7 +98,7 @@ def fake_asf(monkeypatch, make_grid, fake_gcov, tmp_path):
 
     def stream(product: ASFProduct):
         gcov.DATA_DIR.mkdir(exist_ok=True)
-        path = product.get_urls[0]
+        path = product.get_urls()[0]
         datatree = xr.open_datatree(
             path,
             engine="h5netcdf",
@@ -98,12 +107,11 @@ def fake_asf(monkeypatch, make_grid, fake_gcov, tmp_path):
         )
         return datatree
 
-    monkeypatch.setattr(gcov, "stream_granule", stream)
     monkeypatch.setattr(
         asf,
         "granule_search",
         lambda names: [
-            fake_product(gcov.DATA_DIR / f"{n}.h5") for n in names if n in stack
+            fakeProduct(gcov.DATA_DIR / f"{n}.h5") for n in names if n in stack
         ],
     )
     return SimpleNamespace(stack=stack, add=add)

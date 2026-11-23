@@ -1,10 +1,10 @@
 import shutil
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 import pytest
 from conftest import granule_name
-
 from nisar_cv import gcov, process
 from nisar_cv.process import CROP, NODATA, NON_CROP, WATER
 
@@ -19,7 +19,7 @@ def setup_module():
         existing[d] = set(d.iterdir()) if d.exists() else None
 
 
-def test_process_cv(fake_asf):
+def test_process_cv(fake_asf, build_fake_filesystem):
     names = [granule_name(d) for d in DATES]
     for n in names:
         fake_asf.add(Path(n))
@@ -41,7 +41,7 @@ def test_process_cv(fake_asf):
     assert all(p.exists() for p in result.outputs)
 
 
-def test_process_crop_area(fake_asf):
+def test_process_crop_area(fake_asf, build_fake_filesystem):
     names = [granule_name(d) for d in DATES]
     for n in names:
         fake_asf.add(Path(n))

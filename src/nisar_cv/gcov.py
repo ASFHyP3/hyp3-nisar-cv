@@ -71,14 +71,17 @@ def get_earthdata_token() -> str:
     token = response.json()["access_token"]
     return token
 
-
-def stream_granule(product: asf.ASFProduct) -> xr.DataTree:
+def stream_gcov_layer(
+    product: asf.ASFProduct,
+    fs: fsspec.AbstractFileSystem,
+    pol: str = "HHHH",
+    subset_wkt: str | None = None,
+) -> tuple[npt.NDArray[np.floating], Grid]:
+    """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry.
+    Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
+    acquisition are set to NaN."""
     access_url = product.get_urls()[0]
-    token = get_earthdata_token()
-    fs = fsspec.filesystem(
-        protocol="https",
-        client_kwargs={"headers": {"Authorization": f"Bearer {token}"}},
-    )
+    print(f"fs in stream: {fs}")
     datatree = xr.open_datatree(
         fs.open(
             path=access_url,
@@ -89,16 +92,6 @@ def stream_granule(product: asf.ASFProduct) -> xr.DataTree:
         decode_timedelta=False,
         phony_dims="access",
     )
-    return datatree
-
-
-def stream_gcov_layer(
-    product: asf.ASFProduct, pol: str = "HHHH", subset_wkt: str | None = None
-) -> tuple[npt.NDArray[np.floating], Grid]:
-    """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry.
-    Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
-    acquisition are set to NaN."""
-    datatree = stream_granule(product)
     gcov_tree = datatree[GCOV_GRID_PATH]
     x = gcov_tree.coords["xCoordinates"].to_numpy()
     y = gcov_tree.coords["yCoordinates"].to_numpy()

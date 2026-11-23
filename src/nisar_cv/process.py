@@ -4,7 +4,7 @@ from pathlib import Path
 import asf_search as asf
 import numpy as np
 from numpy import typing as npt
-
+import fsspec
 from nisar_cv import gcov
 
 MIN_ACQUISITIONS = 3  # fewer valid samples than this leaves a pixel's CV as nodata
@@ -127,6 +127,13 @@ def aggregate(
     )
     return out, out_grid
 
+def build_filesystem() -> fsspec.AbstractFileSystem:
+    token = gcov.get_earthdata_token()
+    fs = fsspec.filesystem(
+        protocol="https",
+        client_kwargs={"headers": {"Authorization": f"Bearer {token}"}},
+    )
+    return fs
 
 def process_cv(
     granules: list[str],
@@ -143,12 +150,13 @@ def process_cv(
 
     names = list(granules)
     products = asf.granule_search(granules)
-
     stats = None
     grid = None
+    fs = build_filesystem()
+    print(f"fs: {fs}")
     for i, product in enumerate(products, start=1):
         granule = product.properties["sceneName"]
-        layer, layer_grid = gcov.stream_gcov_layer(product, pol, subset_wkt)
+        layer, layer_grid = gcov.stream_gcov_layer(product, fs=fs, pol=pol, subset_wkt=subset_wkt)
 
         if stats is None:
             stats = WelfordCV(np.asarray(layer.shape).astype(np.int64), water_thresh_db)
