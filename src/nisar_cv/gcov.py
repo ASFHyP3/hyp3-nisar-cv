@@ -4,8 +4,7 @@ import netrc
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-
-import aiohttp
+import requests
 import asf_search as asf
 import fsspec
 import numpy as np
@@ -21,6 +20,7 @@ GCOV_MASK_VARIABLE = "mask"
 GCOV_GRID_PATH = "science/LSAR/GCOV/grids/frequencyA"
 GCOV_MASK_FILL = 255  # mask: 0 = partially focused or invalid (incl. transmit gaps), 255 = outside acquisition
 EARTHDATA_HOST = "urs.earthdata.nasa.gov"
+METADATA_BLOCK_SIZE = 1 * 1024
 BLOCK_SIZE = 64 * 1024 * 1024  # 64 MB
 
 
@@ -76,6 +76,11 @@ def earthdata_session() -> asf.ASFSession:
     username, password = earthdata_credentials()
     return asf.ASFSession().auth_with_creds(username, password)
 
+def get_earthdata_token() -> str:
+    response = requests.post('https://urs.earthdata.nasa.gov/api/users/find_or_create_token')
+    response.raise_for_status()
+    token = response.json()['access_token']
+    return token
 
 def download_granule(product: asf.ASFProduct, session: asf.ASFSession) -> Path:
     if not DATA_DIR.exists():
@@ -91,10 +96,10 @@ def download_granule(product: asf.ASFProduct, session: asf.ASFSession) -> Path:
 
 def stream_granule(product: asf.ASFProduct) -> xr.DataTree:
     access_url = product.get_urls()[0]
-    username, password = earthdata_credentials()
+    token = get_earthdata_token()
     fs = fsspec.filesystem(
         protocol="https",
-        client_kwargs={"auth": aiohttp.encode_basic_auth(username, password)},
+        client_kwargs={"headers":{"Authorization": f'Bearer {token}'}},
     )
     datatree = xr.open_datatree(
         fs.open(
