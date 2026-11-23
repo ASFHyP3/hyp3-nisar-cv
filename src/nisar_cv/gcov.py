@@ -94,7 +94,7 @@ def stream_granule(product: asf.ASFProduct) -> xr.DataTree:
     username, password = earthdata_credentials()
     fs = fsspec.filesystem(
         protocol="https",
-        client_kwargs={"auth": aiohttp.BasicAuth(username, password)},
+        client_kwargs={"auth": aiohttp.encode_basic_auth(username, password)},
     )
     datatree = xr.open_datatree(
         fs.open(

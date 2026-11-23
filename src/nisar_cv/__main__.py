@@ -5,7 +5,6 @@ import logging
 from datetime import datetime, timedelta
 
 import asf_search
-
 from nisar_cv import process
 from nisar_cv.aws import upload_file_to_s3
 from nisar_cv.stac import create_nisar_cv_stac_item
@@ -14,6 +13,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+start_time = datetime.now()
+logger.info(f'Program started at {start_time}')
 
 def string_is_true(s: str) -> bool:
     return s.lower() == "true"
@@ -139,6 +140,11 @@ def main() -> None:
             granules, result.outputs, args.bucket, args.bucket_prefix
         )
     )
+
+    stop_time = datetime.now()
+    logger.info(f"Program finished at {stop_time}")
+    logger.info(f"Total processing time: {stop_time - start_time}")
+
     if args.bucket:
         for file in result.outputs:
             upload_file_to_s3(file, args.bucket, args.bucket_prefix)
