@@ -4,10 +4,11 @@ import netrc
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-import requests
+
 import asf_search as asf
 import fsspec
 import numpy as np
+import requests
 import xarray as xr
 from numpy import typing as npt
 from osgeo import gdal, gdal_array, ogr, osr
@@ -76,11 +77,15 @@ def earthdata_session() -> asf.ASFSession:
     username, password = earthdata_credentials()
     return asf.ASFSession().auth_with_creds(username, password)
 
+
 def get_earthdata_token() -> str:
-    response = requests.post('https://urs.earthdata.nasa.gov/api/users/find_or_create_token')
+    response = requests.post(
+        "https://urs.earthdata.nasa.gov/api/users/find_or_create_token"
+    )
     response.raise_for_status()
-    token = response.json()['access_token']
+    token = response.json()["access_token"]
     return token
+
 
 def download_granule(product: asf.ASFProduct, session: asf.ASFSession) -> Path:
     if not DATA_DIR.exists():
@@ -99,7 +104,7 @@ def stream_granule(product: asf.ASFProduct) -> xr.DataTree:
     token = get_earthdata_token()
     fs = fsspec.filesystem(
         protocol="https",
-        client_kwargs={"headers":{"Authorization": f'Bearer {token}'}},
+        client_kwargs={"headers": {"Authorization": f"Bearer {token}"}},
     )
     datatree = xr.open_datatree(
         fs.open(
