@@ -1,6 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
-
+import os
 import asf_search as asf
 import numpy as np
 import pytest
@@ -64,6 +64,8 @@ def fake_gcov():
         root_tree = xr.DataTree()
         root_tree[gcov.GCOV_GRID_PATH] = xr.DataTree(dataset=data_set)
         root_tree[gcov.GCOV_GRID_PATH][gcov.GCOV_PROJECTION_VARIABLE] = projection
+        if path.exists():
+            os.remove(path)
         root_tree.to_netcdf(path, engine="h5netcdf")
         product = fake_product(path)
         return product
@@ -85,12 +87,6 @@ def fake_asf(monkeypatch, make_grid, fake_gcov, tmp_path):
             product = fake_gcov(gcov.DATA_DIR / f"{name}.h5", grid, {"HHHH": layer})
         stack[name] = stream(product)
 
-    def download(product, session):
-        name = product.properties["sceneName"]
-        gcov.DATA_DIR.mkdir(exist_ok=True)
-        layer, grid = stack[name]
-        return fake_gcov(gcov.DATA_DIR / f"{name}.h5", grid, {"HHHH": layer})
-
     def stream(product: ASFProduct):
         gcov.DATA_DIR.mkdir(exist_ok=True)
         path = product.get_urls[0]
@@ -102,9 +98,7 @@ def fake_asf(monkeypatch, make_grid, fake_gcov, tmp_path):
         )
         return datatree
 
-    monkeypatch.setattr(gcov, "earthdata_session", lambda: None)
     monkeypatch.setattr(gcov, "stream_granule", stream)
-    monkeypatch.setattr(gcov, "download_granule", download)
     monkeypatch.setattr(
         asf,
         "granule_search",

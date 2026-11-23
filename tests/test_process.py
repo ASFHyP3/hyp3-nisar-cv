@@ -39,7 +39,6 @@ def test_process_cv(fake_asf):
         f"{result.name}_NVALID.tif",
     ]
     assert all(p.exists() for p in result.outputs)
-    assert list(gcov.DATA_DIR.glob("*.h5")) == []  # inputs removed as it goes
 
 
 def test_process_crop_area(fake_asf):

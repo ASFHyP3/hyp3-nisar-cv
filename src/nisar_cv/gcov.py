@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import netrc
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -154,6 +153,7 @@ def subset_window(
     rows = np.nonzero((y + half_dy > miny) & (y - half_dy < maxy))[0]
 
     return slice(rows[0], rows[-1] + 1), slice(cols[0], cols[-1] + 1)
+
 
 def acquisition_date(granule: str) -> datetime:
     acquisition_datetime = datetime.strptime(granule.split("_")[11], "%Y%m%dT%H%M%S")
