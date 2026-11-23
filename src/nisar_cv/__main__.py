@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timedelta
 
 import asf_search
+
 from nisar_cv import process
 from nisar_cv.aws import upload_file_to_s3
 from nisar_cv.stac import create_nisar_cv_stac_item
@@ -14,7 +15,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 start_time = datetime.now()
-logger.info(f'Program started at {start_time}')
+logger.info(f"Program started at {start_time}")
+
 
 def string_is_true(s: str) -> bool:
     return s.lower() == "true"
