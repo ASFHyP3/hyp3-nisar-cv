@@ -64,20 +64,6 @@ class Grid:
         )
 
 
-def earthdata_credentials() -> tuple[str, str]:
-    credentials = netrc.netrc().authenticators(EARTHDATA_HOST)
-    if credentials is None:
-        raise ValueError(f"No {EARTHDATA_HOST} entry in ~/.netrc")
-    username, _, password = credentials
-    return username, password
-
-
-def earthdata_session() -> asf.ASFSession:
-    """ASF session authenticated with the Earthdata Login credentials in ~/.netrc."""
-    username, password = earthdata_credentials()
-    return asf.ASFSession().auth_with_creds(username, password)
-
-
 def get_earthdata_token() -> str:
     response = requests.post(
         "https://urs.earthdata.nasa.gov/api/users/find_or_create_token"
@@ -85,18 +71,6 @@ def get_earthdata_token() -> str:
     response.raise_for_status()
     token = response.json()["access_token"]
     return token
-
-
-def download_granule(product: asf.ASFProduct, session: asf.ASFSession) -> Path:
-    if not DATA_DIR.exists():
-        DATA_DIR.mkdir()
-    granule = product.properties["sceneName"]
-    print(f"starting download: {granule}")
-    path = DATA_DIR
-    product.download(path=str(path), session=session)
-
-    print(f"finished download: {granule}")
-    return path / f"{granule}.h5"
 
 
 def stream_granule(product: asf.ASFProduct) -> xr.DataTree:
@@ -151,15 +125,6 @@ def stream_gcov_layer(
     return layer, Grid(epsg, x[cols], y[rows])
 
 
-def remove_granule(granule: str) -> None:
-    path = DATA_DIR / f"{granule}.h5"
-    partial_dir = DATA_DIR / ".partial"
-    partial = partial_dir / path.name
-    partial.unlink(missing_ok=True)
-    path.unlink(missing_ok=True)
-    print(f"removed {granule}")
-
-
 def project_wkt(wkt: str, epsg: int) -> ogr.Geometry:
     """Reproject a WGS84 (lon/lat) WKT geometry to ``epsg``."""
     src = osr.SpatialReference()
@@ -189,39 +154,6 @@ def subset_window(
     rows = np.nonzero((y + half_dy > miny) & (y - half_dy < maxy))[0]
 
     return slice(rows[0], rows[-1] + 1), slice(cols[0], cols[-1] + 1)
-
-
-'''
-def read_gcov_layer(
-    h5_path: Path, pol: str = "HHHH", subset_wkt: str | None = None
-) -> tuple[npt.NDArray[np.floating], Grid]:
-    """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry.
-   Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
-    acquisition are set to NaN."""
-    with h5py.File(h5_path, "r") as f:
-        grids = f[GCOV_GRID_PATH]
-        if pol not in grids:
-            terms = [t.decode() for t in grids["listOfCovarianceTerms"][()]]
-            raise ValueError(
-                f"{pol} not in {Path(h5_path).name}; available terms: {terms}"
-            )
-        x = grids["xCoordinates"][()]
-        y = grids["yCoordinates"][()]
-        epsg = int(grids["projection"][()])
-
-        rows, cols = slice(None), slice(None)
-        if subset_wkt:
-            rows, cols = subset_window(subset_wkt, x, y, epsg)
-        layer = grids[pol][
-            rows, cols
-        ]  # h5py reads only the chunks that overlap the window
-        mask = grids["mask"][rows, cols]
-
-    valid = (mask > 0) & (mask != GCOV_MASK_FILL)
-    layer = np.where(valid, layer, np.nan).astype(np.float32)
-    return layer, Grid(epsg, x[cols], y[rows])
-'''
-
 
 def acquisition_date(granule: str) -> datetime:
     acquisition_datetime = datetime.strptime(granule.split("_")[11], "%Y%m%dT%H%M%S")

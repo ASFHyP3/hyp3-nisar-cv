@@ -161,7 +161,6 @@ def process_cv(
             gcov.write_geotiff(Path(f"{granule}.tif"), layer, layer_grid, nodata=np.nan)
 
         del layer
-        gcov.remove_granule(granule)
 
     assert grid is not None, "No grid layer found in any product"
     assert stats is not None, "No stats computed for any product"
