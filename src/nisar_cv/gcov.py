@@ -71,6 +71,7 @@ def get_earthdata_token() -> str:
     token = response.json()["access_token"]
     return token
 
+
 def stream_gcov_layer(
     product: asf.ASFProduct,
     fs: fsspec.AbstractFileSystem,
@@ -81,7 +82,6 @@ def stream_gcov_layer(
     Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
     acquisition are set to NaN."""
     access_url = product.get_urls()[0]
-    print(f"fs in stream: {fs}")
     datatree = xr.open_datatree(
         fs.open(
             path=access_url,
