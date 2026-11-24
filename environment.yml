@@ -8,9 +8,11 @@ dependencies:
   # For running
   - asf_search=14.0
   - gdal=3.13
-  - h5py=3.16
   - numpy=2.5
   - boto3=1.43
+  - fsspec=2026.9
+  - xarray=2026.9
+  - h5netcdf=1.8.3
   # For packaging, and testing
   - pytest=9.1
   - pytest-cov=7.1
@@ -21,6 +23,9 @@ dependencies:
   - pytest=9.1.1
   - brotli>=1.2.1
   - brotli-python>=1.2.1
+  - aiohttp>=3.14
+  - requests=2.34.2
+  - h5py>=3.16
   - pip:
     - -e .
     #for linting and type checking

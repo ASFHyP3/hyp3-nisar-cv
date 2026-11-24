@@ -1,22 +1,26 @@
 from __future__ import annotations
 
-import netrc
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-import asf_search as asf
-import h5py
+import fsspec
 import numpy as np
+import requests
+import xarray as xr
 from numpy import typing as npt
 from osgeo import gdal, gdal_array, ogr, osr
 
 DATA_DIR = Path("data")
 OUTPUT_DIR = Path("output")
 
+GCOV_PROJECTION_VARIABLE = "projection"
+GCOV_MASK_VARIABLE = "mask"
 GCOV_GRID_PATH = "science/LSAR/GCOV/grids/frequencyA"
 GCOV_MASK_FILL = 255  # mask: 0 = partially focused or invalid (incl. transmit gaps), 255 = outside acquisition
 EARTHDATA_HOST = "urs.earthdata.nasa.gov"
+BLOCK_SIZE = 64 * 1024 * 1024  # 64 MB
 
 
 @dataclass(frozen=True)
@@ -58,34 +62,58 @@ class Grid:
         )
 
 
-def earthdata_session() -> asf.ASFSession:
-    """ASF session authenticated with the Earthdata Login credentials in ~/.netrc."""
-    credentials = netrc.netrc().authenticators(EARTHDATA_HOST)
-    if credentials is None:
-        raise ValueError(f"No {EARTHDATA_HOST} entry in ~/.netrc")
-    username, _, password = credentials
-    return asf.ASFSession().auth_with_creds(username, password)
+def get_earthdata_token() -> str:
+    response = requests.post(
+        "https://urs.earthdata.nasa.gov/api/users/find_or_create_token"
+    )
+    response.raise_for_status()
+    token = response.json()["access_token"]
+    return token
 
 
-def download_granule(product: asf.ASFProduct, session: asf.ASFSession) -> Path:
-    if not DATA_DIR.exists():
-        DATA_DIR.mkdir()
-    granule = product.properties["sceneName"]
-    print(f"starting download: {granule}")
-    path = DATA_DIR
-    product.download(path=str(path), session=session)
-
-    print(f"finished download: {granule}")
-    return path / f"{granule}.h5"
-
-
-def remove_granule(granule: str) -> None:
-    path = DATA_DIR / f"{granule}.h5"
-    partial_dir = DATA_DIR / ".partial"
-    partial = partial_dir / path.name
-    partial.unlink(missing_ok=True)
-    path.unlink(missing_ok=True)
-    print(f"removed {granule}")
+def stream_gcov_layer(
+    access_url: str,
+    fs: fsspec.AbstractFileSystem,
+    pol: str = "HHHH",
+    subset_wkt: str | None = None,
+) -> tuple[npt.NDArray[np.floating], Grid]:
+    """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry.
+    Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
+    acquisition are set to NaN."""
+    kwargs: dict[str, Any] = {"group": GCOV_GRID_PATH}
+    gcov_tree = xr.open_datatree(
+        fs.open(
+            path=access_url,
+            cache_type="background",
+            block_size=BLOCK_SIZE,
+        ),
+        engine="h5netcdf",
+        decode_timedelta=False,
+        phony_dims="access",
+        **kwargs,
+    )
+    x = gcov_tree.coords["xCoordinates"].to_numpy()
+    y = gcov_tree.coords["yCoordinates"].to_numpy()
+    epsg = gcov_tree[GCOV_PROJECTION_VARIABLE].item()
+    assert pol in gcov_tree.data_vars, (
+        f"covariance layer {pol} not in granule. Available layers: {gcov_tree.data_vars}"
+    )
+    layer_data_array = gcov_tree.get(pol)
+    assert layer_data_array is not None, f"Layer {pol} was not found"
+    mask_data_array = gcov_tree.get(GCOV_MASK_VARIABLE)
+    assert mask_data_array is not None, "Mask was not found"
+    rows, cols = slice(None), slice(None)
+    if subset_wkt:
+        rows, cols = subset_window(subset_wkt, x, y, epsg)
+    print("loading layer")
+    layer = layer_data_array.isel(xCoordinates=cols, yCoordinates=rows).to_numpy()
+    print("loading layer complete")
+    print("loading  mask")
+    mask = mask_data_array.isel(xCoordinates=cols, yCoordinates=rows).to_numpy()
+    print("loading  mask complete")
+    valid = (mask > 0) & (mask != GCOV_MASK_FILL)
+    layer = np.where(valid, layer, np.nan).astype(np.float32)
+    return layer, Grid(epsg, x[cols], y[rows])
 
 
 def project_wkt(wkt: str, epsg: int) -> ogr.Geometry:
@@ -119,36 +147,6 @@ def subset_window(
     return slice(rows[0], rows[-1] + 1), slice(cols[0], cols[-1] + 1)
 
 
-def read_gcov_layer(
-    h5_path: Path, pol: str = "HHHH", subset_wkt: str | None = None
-) -> tuple[npt.NDArray[np.floating], Grid]:
-    """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry.
-    Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
-    acquisition are set to NaN."""
-    with h5py.File(h5_path, "r") as f:
-        grids = f[GCOV_GRID_PATH]
-        if pol not in grids:
-            terms = [t.decode() for t in grids["listOfCovarianceTerms"][()]]
-            raise ValueError(
-                f"{pol} not in {Path(h5_path).name}; available terms: {terms}"
-            )
-        x = grids["xCoordinates"][()]
-        y = grids["yCoordinates"][()]
-        epsg = int(grids["projection"][()])
-
-        rows, cols = slice(None), slice(None)
-        if subset_wkt:
-            rows, cols = subset_window(subset_wkt, x, y, epsg)
-        layer = grids[pol][
-            rows, cols
-        ]  # h5py reads only the chunks that overlap the window
-        mask = grids["mask"][rows, cols]
-
-    valid = (mask > 0) & (mask != GCOV_MASK_FILL)
-    layer = np.where(valid, layer, np.nan).astype(np.float32)
-    return layer, Grid(epsg, x[cols], y[rows])
-
-
 def acquisition_date(granule: str) -> datetime:
     acquisition_datetime = datetime.strptime(granule.split("_")[11], "%Y%m%dT%H%M%S")
     return acquisition_datetime
@@ -172,7 +170,6 @@ def write_geotiff(
     """Write a single-band Cloud Optimized GeoTIFF to OUTPUT_DIR."""
     OUTPUT_DIR.mkdir(exist_ok=True)
     path = OUTPUT_DIR / filename
-
     gdal_type = gdal_array.NumericTypeCodeToGDALTypeCode(array.dtype)
     ds = gdal.GetDriverByName("COG").Create(
         str(path), grid.shape[1], grid.shape[0], 1, gdal_type

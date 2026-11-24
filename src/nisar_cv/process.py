@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import asf_search as asf
+import fsspec
 import numpy as np
 from numpy import typing as npt
 
@@ -128,6 +129,15 @@ def aggregate(
     return out, out_grid
 
 
+def build_filesystem() -> fsspec.AbstractFileSystem:
+    token = gcov.get_earthdata_token()
+    fs = fsspec.filesystem(
+        protocol="https",
+        client_kwargs={"headers": {"Authorization": f"Bearer {token}"}},
+    )
+    return fs
+
+
 def process_cv(
     granules: list[str],
     pol: str = "HHHH",
@@ -142,16 +152,16 @@ def process_cv(
     """
 
     names = list(granules)
-    session = gcov.earthdata_session()
     products = asf.granule_search(granules)
-    # print(products)
-
     stats = None
     grid = None
+    fs = build_filesystem()
     for i, product in enumerate(products, start=1):
+        access_url = product.get_urls()[0]
         granule = product.properties["sceneName"]
-        h5_path = gcov.download_granule(product, session)
-        layer, layer_grid = gcov.read_gcov_layer(h5_path, pol, subset_wkt)
+        layer, layer_grid = gcov.stream_gcov_layer(
+            access_url, fs=fs, pol=pol, subset_wkt=subset_wkt
+        )
 
         if stats is None:
             stats = WelfordCV(np.asarray(layer.shape).astype(np.int64), water_thresh_db)
@@ -164,7 +174,6 @@ def process_cv(
             gcov.write_geotiff(Path(f"{granule}.tif"), layer, layer_grid, nodata=np.nan)
 
         del layer
-        gcov.remove_granule(granule)
 
     assert grid is not None, "No grid layer found in any product"
     assert stats is not None, "No stats computed for any product"

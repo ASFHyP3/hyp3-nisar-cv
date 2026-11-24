@@ -139,6 +139,7 @@ def main() -> None:
             granules, result.outputs, args.bucket, args.bucket_prefix
         )
     )
+
     if args.bucket:
         for file in result.outputs:
             upload_file_to_s3(file, args.bucket, args.bucket_prefix)
