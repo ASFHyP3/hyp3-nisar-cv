@@ -157,9 +157,10 @@ def process_cv(
     grid = None
     fs = build_filesystem()
     for i, product in enumerate(products, start=1):
+        access_url = product.get_urls()[0]
         granule = product.properties["sceneName"]
         layer, layer_grid = gcov.stream_gcov_layer(
-            product, fs=fs, pol=pol, subset_wkt=subset_wkt
+            access_url, fs=fs, pol=pol, subset_wkt=subset_wkt
         )
 
         if stats is None:

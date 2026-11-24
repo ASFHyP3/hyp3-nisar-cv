@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-import asf_search as asf
 import fsspec
 import numpy as np
 import requests
@@ -20,7 +20,6 @@ GCOV_MASK_VARIABLE = "mask"
 GCOV_GRID_PATH = "science/LSAR/GCOV/grids/frequencyA"
 GCOV_MASK_FILL = 255  # mask: 0 = partially focused or invalid (incl. transmit gaps), 255 = outside acquisition
 EARTHDATA_HOST = "urs.earthdata.nasa.gov"
-METADATA_BLOCK_SIZE = 1 * 1024
 BLOCK_SIZE = 64 * 1024 * 1024  # 64 MB
 
 
@@ -73,7 +72,7 @@ def get_earthdata_token() -> str:
 
 
 def stream_gcov_layer(
-    product: asf.ASFProduct,
+    access_url: str,
     fs: fsspec.AbstractFileSystem,
     pol: str = "HHHH",
     subset_wkt: str | None = None,
@@ -81,8 +80,8 @@ def stream_gcov_layer(
     """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry.
     Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
     acquisition are set to NaN."""
-    access_url = product.get_urls()[0]
-    datatree = xr.open_datatree(
+    kwargs: dict[str, Any] = {"group": GCOV_GRID_PATH}
+    gcov_tree = xr.open_datatree(
         fs.open(
             path=access_url,
             cache_type="background",
@@ -91,11 +90,11 @@ def stream_gcov_layer(
         engine="h5netcdf",
         decode_timedelta=False,
         phony_dims="access",
+        **kwargs,
     )
-    gcov_tree = datatree[GCOV_GRID_PATH]
     x = gcov_tree.coords["xCoordinates"].to_numpy()
     y = gcov_tree.coords["yCoordinates"].to_numpy()
-    epsg = datatree[GCOV_GRID_PATH][GCOV_PROJECTION_VARIABLE].item()
+    epsg = gcov_tree[GCOV_PROJECTION_VARIABLE].item()
     assert pol in gcov_tree.data_vars, (
         f"covariance layer {pol} not in granule. Available layers: {gcov_tree.data_vars}"
     )

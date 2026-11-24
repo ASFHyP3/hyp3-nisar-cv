@@ -32,8 +32,9 @@ def test_stream_gcov_layer_masks_invalid_and_fill(
     layer = np.full(grid.shape, 0.1)
     name = Path("fake_gcov.h5")
     product = fake_gcov(tmp_path / name, grid, {"HHHH": layer, "HVHV": layer}, mask)
+    access_url = product.get_urls()[0]
     fake_asf.add(name, product=product)
-    out, out_grid = gcov.stream_gcov_layer(product, fs, pol="HHHH")
+    out, out_grid = gcov.stream_gcov_layer(access_url, fs, pol="HHHH")
     assert out.dtype == np.float32
     assert np.isnan(out).tolist() == [[False, False, True], [True, False, False]]
     assert out_grid.same_as(grid)
@@ -47,6 +48,7 @@ def test_stream_gcov_layer_subset(
     layer = np.arange(100 * 100, dtype=np.float32).reshape(100, 100)
     name = Path("fake_gcov.h5")
     product = fake_gcov(tmp_path / name, grid, {"HHHH": layer})
+    access_url = product.get_urls()[0]
     fake_asf.add(name, product=product)
     wkt = (
         "POLYGON((-116.99549843904795 36.13935365481583,"
@@ -55,5 +57,5 @@ def test_stream_gcov_layer_subset(
         + "-116.99549834119152 36.14106664405263,"
         + "-116.99549843904795 36.13935365481583))"
     )  # columns 20-29, row 20-29
-    out, _out_grid = gcov.stream_gcov_layer(product, fs, pol="HHHH", subset_wkt=wkt)
+    out, _out_grid = gcov.stream_gcov_layer(access_url, fs, pol="HHHH", subset_wkt=wkt)
     np.testing.assert_array_equal(out, layer[20:30, 20:30])
