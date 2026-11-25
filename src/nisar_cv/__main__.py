@@ -118,7 +118,7 @@ def main() -> None:
         frame=args.frame_number,
         relativeOrbit=args.relative_orbit,
         flightDirection=orbit_direction,
-        frameCoverage='FULL',
+        frameCoverage="FULL",
     )
     granule_names = [product.properties["sceneName"] for product in search_results]
     logger.info(f"processing granules: {granule_names}")
