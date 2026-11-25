@@ -118,13 +118,12 @@ def main() -> None:
         frame=args.frame_number,
         relativeOrbit=args.relative_orbit,
         flightDirection=orbit_direction,
+        frameCoverage='FULL',
     )
     granule_names = [product.properties["sceneName"] for product in search_results]
-    # search for only full frame granules
-    granules = [granule for granule in granule_names if granule.split("_")[-3] == "F"]
-    logger.info(f"processing granules: {granules}")
+    logger.info(f"processing granules: {granule_names}")
     result = process.process_cv(
-        granules,
+        granule_names,
         pol=args.pol,
         subset_wkt=args.subset,
         water_thresh_db=args.water_threshold_db,
@@ -136,7 +135,7 @@ def main() -> None:
         )
     result.outputs.append(
         create_nisar_cv_stac_item(
-            granules, result.outputs, args.bucket, args.bucket_prefix
+            granule_names, result.outputs, args.bucket, args.bucket_prefix
         )
     )
 
