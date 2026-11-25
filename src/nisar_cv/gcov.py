@@ -80,39 +80,30 @@ def stream_gcov_layer(
     """Read one frequency A covariance layer from a GCOV file, optionally subset to a WGS84 WKT geometry.
     Pixels the GCOV mask flags as invalid (partially focused, e.g. transmit gaps) or outside the
     acquisition are set to NaN."""
-    kwargs: dict[str, Any] = {"group": GCOV_GRID_PATH}
-    gcov_tree = xr.open_datatree(
-        fs.open(
-            path=access_url,
-            cache_type="background",
-            block_size=BLOCK_SIZE,
-        ),
-        engine="h5netcdf",
-        decode_timedelta=False,
-        phony_dims="access",
-        **kwargs,
-    )
-    x = gcov_tree.coords["xCoordinates"].to_numpy()
-    y = gcov_tree.coords["yCoordinates"].to_numpy()
-    epsg = gcov_tree[GCOV_PROJECTION_VARIABLE].item()
-    assert pol in gcov_tree.data_vars, (
-        f"covariance layer {pol} not in granule. Available layers: {gcov_tree.data_vars}"
-    )
-    layer_data_array = gcov_tree.get(pol)
-    assert layer_data_array is not None, f"Layer {pol} was not found"
-    mask_data_array = gcov_tree.get(GCOV_MASK_VARIABLE)
-    assert mask_data_array is not None, "Mask was not found"
-    rows, cols = slice(None), slice(None)
-    if subset_wkt:
-        rows, cols = subset_window(subset_wkt, x, y, epsg)
-    print("loading layer")
-    layer = layer_data_array.isel(xCoordinates=cols, yCoordinates=rows).to_numpy()
-    print("loading layer complete")
-    print("loading  mask")
-    mask = mask_data_array.isel(xCoordinates=cols, yCoordinates=rows).to_numpy()
-    print("loading  mask complete")
-    valid = (mask > 0) & (mask != GCOV_MASK_FILL)
-    layer = np.where(valid, layer, np.nan).astype(np.float32)
+    with fs.open(path=access_url, cache_type="background", block_size=BLOCK_SIZE) as f:
+        kwargs: dict[str, Any] = {"group": GCOV_GRID_PATH}
+        with xr.open_datatree(f, engine="h5netcdf", decode_timedelta=False, phony_dims="access", **kwargs) as gcov_tree:
+            x = gcov_tree.coords["xCoordinates"].to_numpy()
+            y = gcov_tree.coords["yCoordinates"].to_numpy()
+            epsg = gcov_tree[GCOV_PROJECTION_VARIABLE].item()
+            assert pol in gcov_tree.data_vars, (
+                f"covariance layer {pol} not in granule. Available layers: {gcov_tree.data_vars}"
+            )
+            layer_data_array = gcov_tree.get(pol)
+            assert layer_data_array is not None, f"Layer {pol} was not found"
+            mask_data_array = gcov_tree.get(GCOV_MASK_VARIABLE)
+            assert mask_data_array is not None, "Mask was not found"
+            rows, cols = slice(None), slice(None)
+            if subset_wkt:
+                rows, cols = subset_window(subset_wkt, x, y, epsg)
+            print("loading layer")
+            layer = layer_data_array.isel(xCoordinates=cols, yCoordinates=rows).to_numpy()
+            print("loading layer complete")
+            print("loading  mask")
+            mask = mask_data_array.isel(xCoordinates=cols, yCoordinates=rows).to_numpy()
+            print("loading  mask complete")
+            valid = (mask > 0) & (mask != GCOV_MASK_FILL)
+            layer = np.where(valid, layer, np.nan).astype(np.float32)
     return layer, Grid(epsg, x[cols], y[rows])
 
 
