@@ -82,7 +82,9 @@ def stream_gcov_layer(
     acquisition are set to NaN."""
     with fs.open(path=access_url, cache_type="background", block_size=BLOCK_SIZE) as f:
         kwargs: dict[str, Any] = {"group": GCOV_GRID_PATH}
-        with xr.open_datatree(f, engine="h5netcdf", decode_timedelta=False, phony_dims="access", **kwargs) as gcov_tree:
+        with xr.open_datatree(
+            f, engine="h5netcdf", decode_timedelta=False, phony_dims="access", **kwargs
+        ) as gcov_tree:
             x = gcov_tree.coords["xCoordinates"].to_numpy()
             y = gcov_tree.coords["yCoordinates"].to_numpy()
             epsg = gcov_tree[GCOV_PROJECTION_VARIABLE].item()
@@ -97,7 +99,9 @@ def stream_gcov_layer(
             if subset_wkt:
                 rows, cols = subset_window(subset_wkt, x, y, epsg)
             print("loading layer")
-            layer = layer_data_array.isel(xCoordinates=cols, yCoordinates=rows).to_numpy()
+            layer = layer_data_array.isel(
+                xCoordinates=cols, yCoordinates=rows
+            ).to_numpy()
             print("loading layer complete")
             print("loading  mask")
             mask = mask_data_array.isel(xCoordinates=cols, yCoordinates=rows).to_numpy()
